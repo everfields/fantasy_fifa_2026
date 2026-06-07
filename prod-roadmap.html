@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mundial 2026 Pool — Road to PROD</title>
+<style>
+  :root {
+    --bg: #0b1220; --card: #131c2e; --card2: #182236; --line: #25324a;
+    --txt: #e6ecf5; --muted: #93a1b8; --green: #34d399; --green-d: #065f46;
+    --amber: #fbbf24; --red: #f87171; --accent: #38bdf8; --you: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--txt);
+    font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+    padding: 32px 18px 80px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header h1 { font-size: 26px; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0 0 18px; }
+  .bar { height: 10px; background: var(--card2); border-radius: 99px; overflow: hidden; margin: 8px 0 4px; }
+  .bar > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width .3s; }
+  .bar-label { font-size: 13px; color: var(--muted); margin-bottom: 26px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; }
+  section.you { border-color: var(--you); box-shadow: 0 0 0 1px rgba(167,139,250,.25); background: linear-gradient(180deg, #1a1530, var(--card)); }
+  h2 { font-size: 17px; margin: 0 0 4px; display: flex; align-items: center; gap: 9px; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 6px; }
+  .tag.block { background: var(--green-d); color: #d1fae5; }
+  .tag.you { background: #3b2d6b; color: #e9e3ff; }
+  .tag.check { background: #423a12; color: #fde68a; }
+  .tag.soon { background: #102b3e; color: #bae6fd; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  ol.steps { margin: 0; padding-left: 0; counter-reset: step; list-style: none; }
+  ol.steps > li { position: relative; padding: 10px 0 10px 40px; border-top: 1px solid var(--line); }
+  ol.steps > li:first-child { border-top: none; }
+  ol.steps > li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 0; top: 10px; width: 26px; height: 26px;
+    background: var(--you); color: #1a1330; font-weight: 700; font-size: 13px;
+    border-radius: 50%; display: grid; place-items: center;
+  }
+  ol.steps b { color: #fff; }
+  ol.steps code, code { background: #0c1426; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font: 12.5px/1.4 "SF Mono", Consolas, monospace; color: #cfe3ff; }
+  .item { display: flex; gap: 11px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); }
+  .item:first-of-type { border-top: none; }
+  .item input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--green); flex: none; cursor: pointer; }
+  .item label { cursor: pointer; }
+  .item .t { font-weight: 600; }
+  .item .d { color: var(--muted); font-size: 13px; }
+  .item.done label .t { text-decoration: line-through; color: var(--muted); }
+  .pri { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+  .pri.p1 { background: #4c1d24; color: #fecaca; }
+  .pri.p2 { background: #4a3a12; color: #fde68a; }
+  .pri.p3 { background: #14323f; color: #bae6fd; }
+  footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 30px; }
+  .reset { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+  .reset:hover { color: var(--txt); border-color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⚽ Mundial 2026 Pool — Road to PROD</h1>
+    <p>Qué falta para estar en producción + backlog de features. Los checks se guardan en este navegador.</p>
+    <div class="bar"><span id="prog"></span></div>
+    <div class="bar-label"><span id="progtxt">0 / 0</span> tareas completadas</div>
+  </header>
+
+  <!-- ============ TUS PASOS ============ -->
+  <section class="you">
+    <h2>👉 Pendiente de tu lado <span class="tag you">tú · ruta crítica</span></h2>
+    <p class="sub">El mínimo imprescindible para poner la app en marcha. En orden. Sin estos pasos la app no arranca contra datos reales.</p>
+    <ol class="steps">
+      <li><b>Crear proyecto Supabase</b> en <a href="https://supabase.com" target="_blank">supabase.com</a> (free tier vale). Copia <code>Project URL</code>, <code>anon key</code> y <code>service_role key</code> desde Settings → API.</li>
+      <li><b>Aplicar la base de datos</b>: ejecuta <code>db/migrations/0001→0003</code> y luego <code>db/seed/seed.sql</code> contra el proyecto (ver <code>db/README.md</code> o el skill <code>/run-porra</code>).</li>
+      <li><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <b>Verifica</b> que el Mundial 2026 está cubierto en tu plan, el código de competición y los rate limits.</li>
+      <li><b>Datos reales del Mundial</b>: sustituye el seed PLACEHOLDER (equipos, grupos, horarios) por el fixture oficial FIFA cuando se conozca el sorteo. Edita <code>db/seed/teams.csv</code> y <code>matches.csv</code>.</li>
+      <li><b>Deploy en Vercel</b>: conecta el repo <code>everfields/fantasy_fifa_2026</code>, añade las variables de entorno (las 3 de Supabase + <code>FOOTBALL_DATA_ORG_TOKEN</code> + un <code>CRON_SECRET</code> fuerte) y despliega. El cron de <code>vercel.json</code> se activa solo.</li>
+      <li><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code></li>
+      <li><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, jokers por usuario, bote (pot) y dejar <code>season_locked=false</code> al abrir.</li>
+    </ol>
+  </section>
+
+  <!-- ============ GO-LIVE BLOCKERS ============ -->
+  <section>
+    <h2>🚧 Bloqueantes técnicos para PROD <span class="tag block">go-live</span></h2>
+    <p class="sub">Trabajo de código/config antes de abrir a los amigos. (Yo puedo hacer todo esto.)</p>
+    <div id="list-block"></div>
+  </section>
+
+  <!-- ============ VERIFY ============ -->
+  <section>
+    <h2>🔍 Verificación pre-PROD <span class="tag check">calidad</span></h2>
+    <p class="sub">Revisar/probar antes de confiar en producción.</p>
+    <div id="list-check"></div>
+  </section>
+
+  <!-- ============ BACKLOG ============ -->
+  <section>
+    <h2>🌅 Backlog / features en el horizonte <span class="tag soon">nice-to-have</span></h2>
+    <p class="sub">Fases 6–7 del plan + ideas. Nada de esto bloquea el lanzamiento.</p>
+    <div id="list-soon"></div>
+  </section>
+
+  <footer>
+    <button class="reset" onclick="resetAll()">↺ Reiniciar todos los checks</button>
+    <p>Generado para el Mundial 2026 Pool · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
+  </footer>
+</div>
+
+<script>
+const DATA = {
+  block: [
+    ["env-vars", "Variables de entorno en Vercel", "Las 3 de Supabase + FOOTBALL_DATA_ORG_TOKEN + CRON_SECRET configuradas en el proyecto de Vercel.", "p1"],
+    ["verify-provider", "Verificar endpoints del proveedor", "Confirmar paths, código de competición y mapeo de stages en lib/providers (marcado 'verify before launch').", "p1"],
+    ["rls-review", "Revisar y probar las RLS", "El núcleo de seguridad: que cada uno solo vea/edite sus predicciones y solo antes del kickoff.", "p1"],
+    ["auth-config", "Config de Auth en Supabase", "Confirmación de email, redirect URLs y SMTP — o desactivar confirmación para el grupo privado.", "p2"],
+    ["lock-test", "Probar el lock al kickoff", "Validar que no se aceptan predicciones tras locks_at (servidor + RLS), nunca confiar en el cliente.", "p1"],
+    ["cron-idempotent", "Probar idempotencia del cron", "Re-ejecutar update-results no debe re-puntuar ni duplicar puntos.", "p2"],
+    ["gitattributes", "Añadir .gitattributes (LF)", "Fijar 'text=auto eol=lf' para evitar el ruido CRLF en Windows.", "p3"],
+    ["seed-real", "Cargar fixture real en PROD", "Una vez con datos FIFA reales, re-seed de la base de PROD.", "p1"],
+  ],
+  check: [
+    ["mobile", "Pase responsive / móvil", "Fase 8 — la mayoría jugará desde el móvil.", "p2"],
+    ["empty-states", "Estados vacíos y de error", "Qué se ve sin predicciones, sin partidos, sin conexión al proveedor.", "p2"],
+    ["projected-points", "Validar puntos proyectados", "Que el cálculo en vivo coincida con el motor de scoring.", "p2"],
+    ["recalc-preview", "Probar recalc manual (preview→confirm)", "Cambiar una regla y comprobar el preview 'afecta a X predicciones'.", "p2"],
+    ["timezones", "Zonas horarias de kickoff", "Horarios del Mundial vs hora local de los jugadores — mostrar bien el countdown.", "p3"],
+    ["lint-build", "CI: typecheck + tests + build", "Que npm run build y los tests de scoring corran en cada push (GitHub Action).", "p3"],
+  ],
+  soon: [
+    ["live-scoring", "Live scoring + puntos en tiempo real", "Marcador en vivo y puntos proyectados durante los partidos (Supabase Realtime). Fase 6.", "p2"],
+    ["chat-realtime", "Cablear el chat / shoutbox", "Hoy es un placeholder; falta tabla messages + Realtime.", "p3"],
+    ["badges", "Rachas y badges", "'3 exactos seguidos', 'rey de la jornada'.", "p3"],
+    ["mini-league", "Mini-liga por jornada", "Quién gana cada jornada, no solo el global.", "p3"],
+    ["reminders", "Recordatorios de lock", "Push/email antes de que cierre cada jornada.", "p3"],
+    ["director-tecnico", "Modo 'Director Técnico'", "Predecir alineación o goleador — necesita API-Football (proveedor de pago).", "p3"],
+    ["h2h", "Historial head-to-head", "Cara a cara entre dos amigos.", "p3"],
+    ["pot-payout", "Reparto automático del bote", "Cálculo y split sugerido de premios.", "p3"],
+    ["leagues", "Ligas / grupos opcionales", "Sub-grupos dentro del pool.", "p3"],
+  ],
+};
+
+const PRI = { p1: "alta", p2: "media", p3: "baja" };
+
+function render(key) {
+  const el = document.getElementById("list-" + key);
+  el.innerHTML = DATA[key].map(([id, t, d, p]) => {
+    const k = key + ":" + id;
+    const done = localStorage.getItem(k) === "1";
+    return `<div class="item ${done ? "done" : ""}" data-k="${k}">
+      <input type="checkbox" ${done ? "checked" : ""} onchange="toggle('${k}', this)" />
+      <label><span class="t">${t}</span><span class="pri ${p}">${PRI[p]}</span><br><span class="d">${d}</span></label>
+    </div>`;
+  }).join("");
+}
+function toggle(k, cb) {
+  localStorage.setItem(k, cb.checked ? "1" : "0");
+  cb.closest(".item").classList.toggle("done", cb.checked);
+  progress();
+}
+function progress() {
+  const boxes = document.querySelectorAll('.item input[type=checkbox]');
+  const done = [...boxes].filter(b => b.checked).length;
+  const pct = boxes.length ? Math.round(done / boxes.length * 100) : 0;
+  document.getElementById("prog").style.width = pct + "%";
+  document.getElementById("progtxt").textContent = done + " / " + boxes.length;
+}
+function resetAll() {
+  if (!confirm("¿Desmarcar todas las tareas?")) return;
+  Object.keys(DATA).forEach(key => DATA[key].forEach(([id]) => localStorage.removeItem(key + ":" + id)));
+  ["block", "check", "soon"].forEach(render);
+  progress();
+}
+["block", "check", "soon"].forEach(render);
+progress();
+</script>
+</body>
+</html>
