@@ -93,8 +93,8 @@
       <li class="done"><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <b>Verifica</b> que el Mundial 2026 está cubierto en tu plan, el código de competición y los rate limits. <i>(hecho — token válido, competición <code>WC</code> en el plan; ⚠️ pero <code>/competitions/WC/matches</code> está vacío todavía)</i></li>
       <li class="done"><b>Datos reales del Mundial</b>: fixture oficial FIFA (sorteo 5 dic 2025) cargado — 48 equipos en 12 grupos + 104 partidos con sedes y horarios reales, eliminatorias como TBD. <code>db/seed/teams.csv</code>, <code>matches.csv</code> y <code>seed_dashboard.sql</code> regenerados y aplicados a Supabase. <i>(hecho — verificado vs FIFA/MLS/NBC; inaugural México–Sudáfrica 11-jun)</i></li>
       <li class="done"><b>Deploy en Vercel</b>: proyecto <code>carlos-andujar/fantasy_fifa_2026</code> desplegado en producción, repo de GitHub conectado (auto-deploy en cada push), 6 variables de entorno cargadas. Plan Hobby → cron diario. <i>(hecho — <a href="https://fantasyfifa2026.vercel.app" target="_blank">fantasyfifa2026.vercel.app</a>)</i></li>
-      <li><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code></li>
-      <li><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, jokers por usuario, bote (pot) y dejar <code>season_locked=false</code> al abrir.</li>
+      <li class="done"><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code> <i>(hecho — admin activo)</i></li>
+      <li class="done"><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, jokers por usuario, bote (pot) y dejar <code>season_locked=false</code> al abrir. <i>(hecho — exacto 5 / signo 2 / dif +1, joker ×3, 3 jokers/usuario, temporada abierta)</i></li>
     </ol>
   </section>
 
