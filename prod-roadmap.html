@@ -92,7 +92,7 @@
       <li class="done"><b>Aplicar la base de datos</b>: ejecuta <code>db/migrations/0001→0003</code> y luego <code>db/seed/seed.sql</code> contra el proyecto (ver <code>db/README.md</code> o el skill <code>/run-porra</code>). <i>(hecho — 48 equipos, 104 partidos, app_settings cargados)</i></li>
       <li class="done"><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <b>Verifica</b> que el Mundial 2026 está cubierto en tu plan, el código de competición y los rate limits. <i>(hecho — token válido, competición <code>WC</code> en el plan; ⚠️ pero <code>/competitions/WC/matches</code> está vacío todavía)</i></li>
       <li class="done"><b>Datos reales del Mundial</b>: fixture oficial FIFA (sorteo 5 dic 2025) cargado — 48 equipos en 12 grupos + 104 partidos con sedes y horarios reales, eliminatorias como TBD. <code>db/seed/teams.csv</code>, <code>matches.csv</code> y <code>seed_dashboard.sql</code> regenerados y aplicados a Supabase. <i>(hecho — verificado vs FIFA/MLS/NBC; inaugural México–Sudáfrica 11-jun)</i></li>
-      <li><b>Deploy en Vercel</b>: conecta el repo <code>everfields/fantasy_fifa_2026</code>, añade las variables de entorno (las 3 de Supabase + <code>FOOTBALL_DATA_ORG_TOKEN</code> + un <code>CRON_SECRET</code> fuerte) y despliega. El cron de <code>vercel.json</code> se activa solo.</li>
+      <li class="done"><b>Deploy en Vercel</b>: proyecto <code>carlos-andujar/fantasy_fifa_2026</code> desplegado en producción, repo de GitHub conectado (auto-deploy en cada push), 6 variables de entorno cargadas. Plan Hobby → cron diario. <i>(hecho — <a href="https://fantasyfifa2026.vercel.app" target="_blank">fantasyfifa2026.vercel.app</a>)</i></li>
       <li><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code></li>
       <li><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, jokers por usuario, bote (pot) y dejar <code>season_locked=false</code> al abrir.</li>
     </ol>
@@ -128,7 +128,8 @@
 <script>
 const DATA = {
   block: [
-    ["env-vars", "Variables de entorno en Vercel", "Las 3 de Supabase + FOOTBALL_DATA_ORG_TOKEN + CRON_SECRET configuradas en el proyecto de Vercel.", "p1"],
+    ["env-vars", "Variables de entorno en Vercel", "HECHO ✓ — 6 variables en Production+Development: las 3 de Supabase, API_FOOTBALL_KEY, FOOTBALL_PROVIDER y CRON_SECRET (mismo valor que .env.local).", "p1"],
+    ["cron-middleware", "Bug: middleware redirige el cron", "El matcher del middleware cubre /api/cron, así que devuelve 307 a login en vez de ejecutar el cron. No urge (cron diario + resultados a mano), pero hay que excluir /api antes de depender del auto-sync.", "p2"],
     ["verify-provider", "Resultados en vivo (proveedor)", "Fixture ya cargado a mano ✓ (no dependía del proveedor). PENDIENTE solo los RESULTADOS en vivo: football-data.org da count:0 para el WC, y el free de API-Football NO cubre la season 2026 (solo 2022-24). Opciones: pagar API-Football (league=1, season=2026 ya cuadra en el código) o meter marcadores a mano en /admin/matches durante el torneo.", "p1"],
     ["rls-review", "Revisar y probar las RLS", "El núcleo de seguridad: que cada uno solo vea/edite sus predicciones y solo antes del kickoff.", "p1"],
     ["auth-config", "Config de Auth en Supabase", "Confirmación de email, redirect URLs y SMTP — o desactivar confirmación para el grupo privado.", "p2"],
