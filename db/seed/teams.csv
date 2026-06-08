@@ -1,49 +1,49 @@
 name,code,group,flag_url
-Canada,CAN,A,https://flagcdn.com/w320/ca.png
+Czechia,CZE,A,https://flagcdn.com/w320/cz.png
 Mexico,MEX,A,https://flagcdn.com/w320/mx.png
-United States,USA,A,https://flagcdn.com/w320/us.png
-Wales,WAL,A,https://flagcdn.com/w320/gb-wls.png
-Argentina,ARG,B,https://flagcdn.com/w320/ar.png
-Saudi Arabia,KSA,B,https://flagcdn.com/w320/sa.png
-Australia,AUS,B,https://flagcdn.com/w320/au.png
-Poland,POL,B,https://flagcdn.com/w320/pl.png
-France,FRA,C,https://flagcdn.com/w320/fr.png
-Denmark,DEN,C,https://flagcdn.com/w320/dk.png
-Tunisia,TUN,C,https://flagcdn.com/w320/tn.png
-Senegal,SEN,C,https://flagcdn.com/w320/sn.png
-England,ENG,D,https://flagcdn.com/w320/gb-eng.png
-Iran,IRN,D,https://flagcdn.com/w320/ir.png
-Ecuador,ECU,D,https://flagcdn.com/w320/ec.png
-Netherlands,NED,D,https://flagcdn.com/w320/nl.png
-Spain,ESP,E,https://flagcdn.com/w320/es.png
-Costa Rica,CRC,E,https://flagcdn.com/w320/cr.png
+South Africa,RSA,A,https://flagcdn.com/w320/za.png
+South Korea,KOR,A,https://flagcdn.com/w320/kr.png
+Bosnia-Herzegovina,BIH,B,https://flagcdn.com/w320/ba.png
+Canada,CAN,B,https://flagcdn.com/w320/ca.png
+Qatar,QAT,B,https://flagcdn.com/w320/qa.png
+Switzerland,SUI,B,https://flagcdn.com/w320/ch.png
+Brazil,BRA,C,https://flagcdn.com/w320/br.png
+Haiti,HAI,C,https://flagcdn.com/w320/ht.png
+Morocco,MAR,C,https://flagcdn.com/w320/ma.png
+Scotland,SCO,C,https://flagcdn.com/w320/gb-sct.png
+Australia,AUS,D,https://flagcdn.com/w320/au.png
+Paraguay,PAR,D,https://flagcdn.com/w320/py.png
+Türkiye,TUR,D,https://flagcdn.com/w320/tr.png
+United States,USA,D,https://flagcdn.com/w320/us.png
+Curaçao,CUW,E,https://flagcdn.com/w320/cw.png
+Ecuador,ECU,E,https://flagcdn.com/w320/ec.png
 Germany,GER,E,https://flagcdn.com/w320/de.png
-Japan,JPN,E,https://flagcdn.com/w320/jp.png
-Belgium,BEL,F,https://flagcdn.com/w320/be.png
-Scotland,SCO,F,https://flagcdn.com/w320/gb-sct.png
-Morocco,MAR,F,https://flagcdn.com/w320/ma.png
-Croatia,CRO,F,https://flagcdn.com/w320/hr.png
-Brazil,BRA,G,https://flagcdn.com/w320/br.png
-Serbia,SRB,G,https://flagcdn.com/w320/rs.png
-Switzerland,SUI,G,https://flagcdn.com/w320/ch.png
-Cameroon,CMR,G,https://flagcdn.com/w320/cm.png
-Portugal,POR,H,https://flagcdn.com/w320/pt.png
-Ghana,GHA,H,https://flagcdn.com/w320/gh.png
+Ivory Coast,CIV,E,https://flagcdn.com/w320/ci.png
+Japan,JPN,F,https://flagcdn.com/w320/jp.png
+Netherlands,NED,F,https://flagcdn.com/w320/nl.png
+Sweden,SWE,F,https://flagcdn.com/w320/se.png
+Tunisia,TUN,F,https://flagcdn.com/w320/tn.png
+Belgium,BEL,G,https://flagcdn.com/w320/be.png
+Egypt,EGY,G,https://flagcdn.com/w320/eg.png
+Iran,IRN,G,https://flagcdn.com/w320/ir.png
+New Zealand,NZL,G,https://flagcdn.com/w320/nz.png
+Cape Verde,CPV,H,https://flagcdn.com/w320/cv.png
+Saudi Arabia,KSA,H,https://flagcdn.com/w320/sa.png
+Spain,ESP,H,https://flagcdn.com/w320/es.png
 Uruguay,URU,H,https://flagcdn.com/w320/uy.png
-South Korea,KOR,H,https://flagcdn.com/w320/kr.png
-Italy,ITA,I,https://flagcdn.com/w320/it.png
-Nigeria,NGA,I,https://flagcdn.com/w320/ng.png
-Colombia,COL,I,https://flagcdn.com/w320/co.png
-Egypt,EGY,I,https://flagcdn.com/w320/eg.png
-Norway,NOR,J,https://flagcdn.com/w320/no.png
-Sweden,SWE,J,https://flagcdn.com/w320/se.png
-Qatar,QAT,J,https://flagcdn.com/w320/qa.png
-Ivory Coast,CIV,J,https://flagcdn.com/w320/ci.png
-Austria,AUT,K,https://flagcdn.com/w320/at.png
-Algeria,ALG,K,https://flagcdn.com/w320/dz.png
-Peru,PER,K,https://flagcdn.com/w320/pe.png
-New Zealand,NZL,K,https://flagcdn.com/w320/nz.png
-Turkey,TUR,L,https://flagcdn.com/w320/tr.png
-Chile,CHI,L,https://flagcdn.com/w320/cl.png
-Paraguay,PAR,L,https://flagcdn.com/w320/py.png
-Greece,GRE,L,https://flagcdn.com/w320/gr.png
+France,FRA,I,https://flagcdn.com/w320/fr.png
+Iraq,IRQ,I,https://flagcdn.com/w320/iq.png
+Norway,NOR,I,https://flagcdn.com/w320/no.png
+Senegal,SEN,I,https://flagcdn.com/w320/sn.png
+Algeria,ALG,J,https://flagcdn.com/w320/dz.png
+Argentina,ARG,J,https://flagcdn.com/w320/ar.png
+Austria,AUT,J,https://flagcdn.com/w320/at.png
+Jordan,JOR,J,https://flagcdn.com/w320/jo.png
+Colombia,COL,K,https://flagcdn.com/w320/co.png
+DR Congo,COD,K,https://flagcdn.com/w320/cd.png
+Portugal,POR,K,https://flagcdn.com/w320/pt.png
+Uzbekistan,UZB,K,https://flagcdn.com/w320/uz.png
+Croatia,CRO,L,https://flagcdn.com/w320/hr.png
+England,ENG,L,https://flagcdn.com/w320/gb-eng.png
+Ghana,GHA,L,https://flagcdn.com/w320/gh.png
+Panama,PAN,L,https://flagcdn.com/w320/pa.png

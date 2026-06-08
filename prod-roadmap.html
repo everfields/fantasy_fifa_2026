@@ -41,6 +41,9 @@
     border-radius: 50%; display: grid; place-items: center;
   }
   ol.steps b { color: #fff; }
+  ol.steps > li.done { color: var(--muted); }
+  ol.steps > li.done b { color: var(--muted); text-decoration: line-through; }
+  ol.steps > li.done::before { content: "✓"; background: var(--green); color: #07271c; }
   ol.steps code, code { background: #0c1426; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font: 12.5px/1.4 "SF Mono", Consolas, monospace; color: #cfe3ff; }
   .item { display: flex; gap: 11px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); }
   .item:first-of-type { border-top: none; }
@@ -53,6 +56,12 @@
   .pri.p1 { background: #4c1d24; color: #fecaca; }
   .pri.p2 { background: #4a3a12; color: #fde68a; }
   .pri.p3 { background: #14323f; color: #bae6fd; }
+  .countdown { display: flex; align-items: center; gap: 12px; background: linear-gradient(180deg, #2a1620, #1c1018); border: 1px solid #4c1d24; border-radius: 12px; padding: 14px 18px; margin: 0 0 26px; }
+  .countdown .big { font-size: 30px; font-weight: 800; line-height: 1; color: var(--red); font-variant-numeric: tabular-nums; }
+  .countdown .lbl { font-size: 13.5px; }
+  .countdown .lbl b { color: #fff; }
+  .countdown.live { border-color: var(--green-d); background: linear-gradient(180deg, #0f2418, #0c1a14); }
+  .countdown.live .big { color: var(--green); font-size: 22px; }
   footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 30px; }
   .reset { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
   .reset:hover { color: var(--txt); border-color: var(--muted); }
@@ -68,15 +77,21 @@
     <div class="bar-label"><span id="progtxt">0 / 0</span> tareas completadas</div>
   </header>
 
+  <!-- ============ COUNTDOWN ============ -->
+  <div class="countdown" id="countdown">
+    <div class="big" id="cd-num">—</div>
+    <div class="lbl" id="cd-txt">Calculando…</div>
+  </div>
+
   <!-- ============ TUS PASOS ============ -->
   <section class="you">
     <h2>👉 Pendiente de tu lado <span class="tag you">tú · ruta crítica</span></h2>
     <p class="sub">El mínimo imprescindible para poner la app en marcha. En orden. Sin estos pasos la app no arranca contra datos reales.</p>
     <ol class="steps">
-      <li><b>Crear proyecto Supabase</b> en <a href="https://supabase.com" target="_blank">supabase.com</a> (free tier vale). Copia <code>Project URL</code>, <code>anon key</code> y <code>service_role key</code> desde Settings → API.</li>
-      <li><b>Aplicar la base de datos</b>: ejecuta <code>db/migrations/0001→0003</code> y luego <code>db/seed/seed.sql</code> contra el proyecto (ver <code>db/README.md</code> o el skill <code>/run-porra</code>).</li>
-      <li><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <b>Verifica</b> que el Mundial 2026 está cubierto en tu plan, el código de competición y los rate limits.</li>
-      <li><b>Datos reales del Mundial</b>: sustituye el seed PLACEHOLDER (equipos, grupos, horarios) por el fixture oficial FIFA cuando se conozca el sorteo. Edita <code>db/seed/teams.csv</code> y <code>matches.csv</code>.</li>
+      <li class="done"><b>Crear proyecto Supabase</b> en <a href="https://supabase.com" target="_blank">supabase.com</a> (free tier vale). Copia <code>Project URL</code>, <code>anon key</code> y <code>service_role key</code> desde Settings → API. <i>(hecho — claves en <code>.env.local</code>)</i></li>
+      <li class="done"><b>Aplicar la base de datos</b>: ejecuta <code>db/migrations/0001→0003</code> y luego <code>db/seed/seed.sql</code> contra el proyecto (ver <code>db/README.md</code> o el skill <code>/run-porra</code>). <i>(hecho — 48 equipos, 104 partidos, app_settings cargados)</i></li>
+      <li class="done"><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <b>Verifica</b> que el Mundial 2026 está cubierto en tu plan, el código de competición y los rate limits. <i>(hecho — token válido, competición <code>WC</code> en el plan; ⚠️ pero <code>/competitions/WC/matches</code> está vacío todavía)</i></li>
+      <li class="done"><b>Datos reales del Mundial</b>: fixture oficial FIFA (sorteo 5 dic 2025) cargado — 48 equipos en 12 grupos + 104 partidos con sedes y horarios reales, eliminatorias como TBD. <code>db/seed/teams.csv</code>, <code>matches.csv</code> y <code>seed_dashboard.sql</code> regenerados y aplicados a Supabase. <i>(hecho — verificado vs FIFA/MLS/NBC; inaugural México–Sudáfrica 11-jun)</i></li>
       <li><b>Deploy en Vercel</b>: conecta el repo <code>everfields/fantasy_fifa_2026</code>, añade las variables de entorno (las 3 de Supabase + <code>FOOTBALL_DATA_ORG_TOKEN</code> + un <code>CRON_SECRET</code> fuerte) y despliega. El cron de <code>vercel.json</code> se activa solo.</li>
       <li><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code></li>
       <li><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, jokers por usuario, bote (pot) y dejar <code>season_locked=false</code> al abrir.</li>
@@ -106,7 +121,7 @@
 
   <footer>
     <button class="reset" onclick="resetAll()">↺ Reiniciar todos los checks</button>
-    <p>Generado para el Mundial 2026 Pool · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
+    <p>Mundial 2026 Pool · actualizado 8 jun 2026 · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
   </footer>
 </div>
 
@@ -114,13 +129,13 @@
 const DATA = {
   block: [
     ["env-vars", "Variables de entorno en Vercel", "Las 3 de Supabase + FOOTBALL_DATA_ORG_TOKEN + CRON_SECRET configuradas en el proyecto de Vercel.", "p1"],
-    ["verify-provider", "Verificar endpoints del proveedor", "Confirmar paths, código de competición y mapeo de stages en lib/providers (marcado 'verify before launch').", "p1"],
+    ["verify-provider", "Resultados en vivo (proveedor)", "Fixture ya cargado a mano ✓ (no dependía del proveedor). PENDIENTE solo los RESULTADOS en vivo: football-data.org da count:0 para el WC, y el free de API-Football NO cubre la season 2026 (solo 2022-24). Opciones: pagar API-Football (league=1, season=2026 ya cuadra en el código) o meter marcadores a mano en /admin/matches durante el torneo.", "p1"],
     ["rls-review", "Revisar y probar las RLS", "El núcleo de seguridad: que cada uno solo vea/edite sus predicciones y solo antes del kickoff.", "p1"],
     ["auth-config", "Config de Auth en Supabase", "Confirmación de email, redirect URLs y SMTP — o desactivar confirmación para el grupo privado.", "p2"],
     ["lock-test", "Probar el lock al kickoff", "Validar que no se aceptan predicciones tras locks_at (servidor + RLS), nunca confiar en el cliente.", "p1"],
     ["cron-idempotent", "Probar idempotencia del cron", "Re-ejecutar update-results no debe re-puntuar ni duplicar puntos.", "p2"],
     ["gitattributes", "Añadir .gitattributes (LF)", "Fijar 'text=auto eol=lf' para evitar el ruido CRLF en Windows.", "p3"],
-    ["seed-real", "Cargar fixture real en PROD", "Una vez con datos FIFA reales, re-seed de la base de PROD.", "p1"],
+    ["seed-real", "Fixture real cargado en la BD", "HECHO ✓ — 48 equipos + 104 partidos oficiales aplicados a Supabase y guardados en db/seed (teams.csv, matches.csv, seed_dashboard.sql). Si más adelante creas un proyecto PROD aparte, re-aplica el seed allí.", "p1"],
   ],
   check: [
     ["mobile", "Pase responsive / móvil", "Fase 8 — la mayoría jugará desde el móvil.", "p2"],
@@ -174,8 +189,34 @@ function resetAll() {
   ["block", "check", "soon"].forEach(render);
   progress();
 }
+function countdown() {
+  // Partido inaugural del Mundial 2026 — 11 jun 2026 (Estadio Azteca, CDMX).
+  const KICKOFF = new Date("2026-06-11T18:00:00-06:00");
+  const elNum = document.getElementById("cd-num");
+  const elTxt = document.getElementById("cd-txt");
+  const box = document.getElementById("countdown");
+  const now = new Date();
+  const ms = KICKOFF - now;
+  const day = 86400000;
+  if (ms <= -day * 39) { // mundial terminado (~13 jul 2026)
+    box.classList.add("live");
+    elNum.textContent = "🏆";
+    elTxt.innerHTML = "<b>Mundial 2026 finalizado.</b> Reparte el bote y cierra la temporada.";
+  } else if (ms <= 0) {
+    box.classList.add("live");
+    elNum.textContent = "EN VIVO";
+    elTxt.innerHTML = "<b>El Mundial ya está en juego.</b> La porra debería estar en PROD con el fixture real cargado.";
+  } else {
+    const d = Math.floor(ms / day);
+    const h = Math.floor((ms % day) / 3600000);
+    elNum.textContent = d;
+    elTxt.innerHTML = `<b>día${d === 1 ? "" : "s"} (y ${h} h) para el pitido inicial</b> · 11 jun 2026.<br>Lo de la ruta crítica tiene que estar listo ya.`;
+  }
+}
+
 ["block", "check", "soon"].forEach(render);
 progress();
+countdown();
 </script>
 </body>
 </html>

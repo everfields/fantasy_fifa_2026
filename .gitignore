@@ -2,8 +2,10 @@
 /.next
 /out
 /build
+# env files — ignore everything except the committed template
 .env
-.env*.local
+.env.*
+!.env.example
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
