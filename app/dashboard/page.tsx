@@ -100,9 +100,9 @@ export default async function DashboardPage() {
             sub="resultados clavados"
           />
           <StatCard
-            label="Jokers"
-            value={String(profile.joker_count)}
-            sub="disponibles"
+            label="Meta volante"
+            value={standing ? String(standing.meta_points) : "0"}
+            sub="puntos de campeón de ronda"
           />
         </div>
 

@@ -14,7 +14,17 @@ export type Stage =
   | "semi"
   | "third_place"
   | "final";
-export type BonusType = "single" | "multi" | "numeric";
+export type BonusType = "single" | "multi" | "numeric" | "text";
+
+/**
+ * Identity of a "round" for meta-volante (round-champion) scoring.
+ * Group stage splits into one round per matchday; each knockout stage is its
+ * own round. Derived from a match's stage + matchday — see lib/scoring.
+ *   "group-md1" | "group-md2" | "group-md3"
+ *   "round_of_32" | "round_of_16" | "quarter" | "semi" | "final"
+ * (third_place matches fold into the "final" round).
+ */
+export type RoundKey = string;
 
 export interface Profile {
   id: string; // = auth.uid
@@ -40,11 +50,13 @@ export interface Match {
   away_team: string;
   stage: Stage;
   group: string | null;
+  matchday: number | null; // 1..3 within the group stage; null for knockouts
   kickoff_at: string; // ISO timestamp
   home_score: number | null;
   away_score: number | null;
   status: MatchStatus;
   locks_at: string; // ISO; = kickoff
+  is_joker: boolean; // admin-designated joker match → ×joker_multiplier for ALL users
   provider_match_id: string | null; // id in the external football provider
 }
 
@@ -54,7 +66,7 @@ export interface Prediction {
   match_id: string;
   home_pred: number;
   away_pred: number;
-  is_joker: boolean;
+  is_joker: boolean; // DEPRECATED: jokers are now assigned per-match (Match.is_joker), not per-user. Column kept for back-compat; scoring ignores it.
   points_awarded: number | null; // null = not yet scored
   created_at: string;
   updated_at: string;
@@ -64,10 +76,25 @@ export interface BonusQuestion {
   id: string;
   text: string;
   type: BonusType;
-  options: string[] | null; // for single/multi
+  options: string[] | null; // for single/multi; null for numeric/text
   points: number;
-  correct_answer: string | string[] | number | null;
+  correct_answer: string | string[] | number | null; // text → string (case-insensitive match)
   locks_at: string;
+}
+
+/**
+ * A "meta volante" (round-champion) award. The player with the most prediction
+ * points within a round earns `points` (config: meta_volante_points). Ties
+ * break by exact hits in that round, then split. Computed during recalc and
+ * summed into standings. Not predicted by users — earned by performance.
+ */
+export interface RoundAward {
+  id: string;
+  round_key: RoundKey;
+  user_id: string;
+  points: number; // award granted (e.g. 100)
+  round_points: number; // the player's prediction points within the round (audit/display)
+  created_at: string;
 }
 
 export interface BonusAnswer {
@@ -85,6 +112,7 @@ export interface StandingRow {
   total_points: number;
   exact_hits: number;
   bonus_points: number;
+  meta_points: number; // sum of meta-volante (round-champion) awards
   rank: number;
 }
 
@@ -100,7 +128,10 @@ export interface ScoringConfig {
 
 export interface AppSettings {
   scoring: ScoringConfig;
-  jokers_per_user: number;
+  bonus_default_points: number; // default points for a new bonus question
+  group_winner_points: number; // points per auto-generated group-winner bonus question
+  meta_volante_points: number; // round-champion (meta volante) award
+  jokers_per_user: number; // DEPRECATED: jokers are now assigned per-match by the admin
   pot_amount: number;
   season_locked: boolean;
   live_polling_seconds: number;
@@ -119,15 +150,18 @@ export interface AuditEntry {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   scoring: {
-    exact: 5,
-    sign: 3,
-    diff_bonus: 1,
-    joker_multiplier: 2,
+    exact: 50,
+    sign: 20,
+    diff_bonus: 10,
+    joker_multiplier: 3,
     exact_enabled: true,
     sign_enabled: true,
     diff_bonus_enabled: true,
   },
-  jokers_per_user: 3,
+  bonus_default_points: 100,
+  group_winner_points: 50,
+  meta_volante_points: 100,
+  jokers_per_user: 0,
   pot_amount: 0,
   season_locked: false,
   live_polling_seconds: 60,

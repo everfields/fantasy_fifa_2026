@@ -19,7 +19,9 @@ const scoringSchema = z.object({
   exact_enabled: z.coerce.boolean(),
   sign_enabled: z.coerce.boolean(),
   diff_bonus_enabled: z.coerce.boolean(),
-  jokers_per_user: z.coerce.number().int().min(0).max(100),
+  bonus_default_points: z.coerce.number().int().min(0).max(100_000),
+  group_winner_points: z.coerce.number().int().min(0).max(100_000),
+  meta_volante_points: z.coerce.number().int().min(0).max(100_000),
   pot_amount: z.coerce.number().min(0).max(1_000_000),
   season_locked: z.coerce.boolean(),
 });
@@ -50,7 +52,9 @@ export async function saveScoring(
     exact_enabled: checkbox(form, "exact_enabled"),
     sign_enabled: checkbox(form, "sign_enabled"),
     diff_bonus_enabled: checkbox(form, "diff_bonus_enabled"),
-    jokers_per_user: form.get("jokers_per_user"),
+    bonus_default_points: form.get("bonus_default_points"),
+    group_winner_points: form.get("group_winner_points"),
+    meta_volante_points: form.get("meta_volante_points"),
     pot_amount: form.get("pot_amount"),
     season_locked: checkbox(form, "season_locked"),
   });
@@ -66,7 +70,9 @@ export async function saveScoring(
   const d = parsed.data;
   const before = await getAppSettingsAdmin();
 
-  // Preserve admin extension arrays (bans / payments) the form does not touch.
+  // Preserve admin extension arrays (bans / payments) and unknown keys the form
+  // does not touch (spread `before`). `jokers_per_user` is deprecated — its input
+  // was removed from the form (jokers are per-match) — so carry the stored value forward.
   const after = {
     ...before,
     scoring: {
@@ -78,7 +84,9 @@ export async function saveScoring(
       sign_enabled: d.sign_enabled,
       diff_bonus_enabled: d.diff_bonus_enabled,
     },
-    jokers_per_user: d.jokers_per_user,
+    bonus_default_points: d.bonus_default_points,
+    group_winner_points: d.group_winner_points,
+    meta_volante_points: d.meta_volante_points,
     pot_amount: d.pot_amount,
     season_locked: d.season_locked,
   };

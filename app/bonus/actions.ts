@@ -11,9 +11,12 @@ export type SaveBonusState = { ok: boolean; error: string | null };
 
 const schema = z.object({
   questionId: z.string().uuid("Pregunta no válida."),
-  // single → one option string; multi → JSON array of strings; numeric → number.
+  // single → one option string; multi → JSON array of strings; numeric → number;
+  // text → free-text string.
   answer: z.string().min(1, "Responde antes de guardar."),
 });
+
+const MAX_TEXT_LEN = 200;
 
 export async function saveBonusAnswer(
   _prev: SaveBonusState,
@@ -55,6 +58,21 @@ export async function saveBonusAnswer(
       const n = Number(answer);
       if (Number.isNaN(n)) return { ok: false, error: "Introduce un número." };
       value = n;
+      break;
+    }
+    case "text": {
+      // Free text: no options to validate against. Trim + length-cap.
+      const trimmed = answer.trim();
+      if (trimmed.length === 0) {
+        return { ok: false, error: "Responde antes de guardar." };
+      }
+      if (trimmed.length > MAX_TEXT_LEN) {
+        return {
+          ok: false,
+          error: `Máximo ${MAX_TEXT_LEN} caracteres.`,
+        };
+      }
+      value = trimmed;
       break;
     }
     case "multi": {

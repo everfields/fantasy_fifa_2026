@@ -59,11 +59,6 @@ export default async function MatchesPage() {
   const predictions = (predData as Prediction[] | null) ?? [];
   const predByMatch = new Map(predictions.map((p) => [p.match_id, p]));
 
-  // Joker budget: allowance minus jokers already spent (across all matches).
-  const allowance = Math.min(profile.joker_count, settings.jokers_per_user);
-  const jokersUsed = predictions.filter((p) => p.is_joker).length;
-  const jokersRemaining = Math.max(0, allowance - jokersUsed);
-
   const upcoming = matches.filter((m) => new Date(m.locks_at).getTime() > now);
   const past = matches
     .filter((m) => new Date(m.locks_at).getTime() <= now)
@@ -85,10 +80,6 @@ export default async function MatchesPage() {
               saque.
             </p>
           </div>
-          <Badge variant="secondary" className="text-sm">
-            🃏 {jokersRemaining} joker{jokersRemaining === 1 ? "" : "s"}{" "}
-            disponible{jokersRemaining === 1 ? "" : "s"}
-          </Badge>
         </header>
 
         <Tabs defaultValue="upcoming" className="space-y-6">
@@ -111,12 +102,6 @@ export default async function MatchesPage() {
                       const locked =
                         settings.season_locked ||
                         new Date(m.locks_at).getTime() <= now;
-                      // A match that already carries the user's joker should not
-                      // count against the remaining budget for its own form.
-                      const formJokers =
-                        prediction?.is_joker
-                          ? jokersRemaining + 1
-                          : jokersRemaining;
                       return (
                         <PredictionForm
                           key={m.id}
@@ -124,7 +109,7 @@ export default async function MatchesPage() {
                           homeTeam={teamOr(teamMap, m.home_team)}
                           awayTeam={teamOr(teamMap, m.away_team)}
                           prediction={prediction}
-                          jokersRemaining={formJokers}
+                          jokerMultiplier={settings.scoring.joker_multiplier}
                           locked={locked}
                           action={savePrediction}
                         />

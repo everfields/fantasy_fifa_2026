@@ -112,12 +112,12 @@ export default async function MatchDetailPage({
             {
               home_pred: p.home_pred,
               away_pred: p.away_pred,
-              is_joker: p.is_joker,
             },
             {
               home_score: match.home_score,
               away_score: match.away_score,
               status: match.status,
+              is_joker: match.is_joker,
             },
             settings.scoring,
           )
@@ -158,6 +158,14 @@ export default async function MatchDetailPage({
                   <span className="text-muted-foreground">
                     Grupo {match.group}
                   </span>
+                )}
+                {match.is_joker && (
+                  <Badge
+                    variant="default"
+                    title="Partido joker: puntos multiplicados"
+                  >
+                    🃏 JOKER
+                  </Badge>
                 )}
               </div>
 
@@ -262,11 +270,6 @@ export default async function MatchDetailPage({
                           )}
                         </span>
                       </div>
-                      {p.is_joker && (
-                        <Badge variant="secondary" title="Joker">
-                          🃏
-                        </Badge>
-                      )}
                       <span className="font-mono text-lg font-bold tabular-nums">
                         {p.home_pred}-{p.away_pred}
                       </span>

@@ -133,6 +133,69 @@ export async function saveLocksAt(
   return { ok: true, message: "Hora de bloqueo actualizada." };
 }
 
+const jokerSchema = z
+  .object({
+    match_id: z.string().min(1),
+    is_joker: z.coerce.boolean(),
+  })
+  .strict();
+
+/**
+ * Toggle a match's admin-designated joker flag. A joker match multiplies EVERY
+ * user's prediction points for that match by `scoring.joker_multiplier` (jokers
+ * are no longer chosen per-user). Service-role write, audit-logged like
+ * saveResult/saveLocksAt. A recalc must be run afterwards to repoint already
+ * scored predictions.
+ */
+export async function saveJoker(
+  _prev: MatchActionState,
+  form: FormData,
+): Promise<MatchActionState> {
+  const actor = await adminActor();
+
+  const parsed = jokerSchema.safeParse({
+    match_id: form.get("match_id"),
+    is_joker: form.get("is_joker"),
+  });
+  if (!parsed.success) return { ok: false, message: "Datos inválidos." };
+
+  const { match_id, is_joker } = parsed.data;
+  const before = await loadMatch(match_id);
+  if (!before) return { ok: false, message: "Partido no encontrado." };
+
+  if (before.is_joker === is_joker) {
+    return {
+      ok: true,
+      message: is_joker ? "Ya era un partido joker." : "Ya no era joker.",
+    };
+  }
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("matches")
+    .update({ is_joker })
+    .eq("id", match_id);
+
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "set_match_joker",
+    target_type: "match",
+    target_id: match_id,
+    before: { is_joker: before.is_joker },
+    after: { is_joker },
+  });
+
+  revalidatePath("/admin/matches");
+  return {
+    ok: true,
+    message: is_joker
+      ? "Partido marcado como joker. Ejecuta «Recalcular» para aplicar el multiplicador."
+      : "Joker retirado. Ejecuta «Recalcular» para revertir el multiplicador.",
+  };
+}
+
 const syncSchema = z.object({ match_id: z.string().min(1) }).strict();
 
 /**

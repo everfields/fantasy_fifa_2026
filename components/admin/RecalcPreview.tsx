@@ -129,7 +129,7 @@ export function RecalcPreview() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
                 label="Predicciones"
                 value={String(preview.totalPredictions)}
@@ -148,6 +148,19 @@ export function RecalcPreview() {
                     : preview.totalDelta < 0
                       ? "negative"
                       : "default"
+                }
+              />
+              <Stat
+                label="Premios meta volante"
+                value={
+                  preview.roundAwardsAffected === null
+                    ? "pendiente"
+                    : String(preview.roundAwardsAffected)
+                }
+                tone={
+                  preview.roundAwardsAffected && preview.roundAwardsAffected > 0
+                    ? "positive"
+                    : "default"
                 }
               />
             </div>

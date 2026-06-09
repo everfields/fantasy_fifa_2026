@@ -12,6 +12,8 @@ import type {
   ScoringConfig,
   BonusQuestion,
   BonusType,
+  Stage,
+  RoundKey,
 } from "@/lib/types";
 
 /** Match outcome from the perspective of the 1/X/2 sign. */
@@ -42,11 +44,18 @@ export function isExact(
   return homePred === homeScore && awayPred === awayScore;
 }
 
-/** Minimal shape of a prediction the engine needs to score. */
+/**
+ * Minimal shape of a prediction the engine needs to score.
+ *
+ * NOTE: jokers are now a property of the MATCH (`ScorableMatch.is_joker`), not
+ * the prediction. `is_joker` is kept here as an OPTIONAL field for DB
+ * back-compat only — the engine never reads it. The multiplier is driven by
+ * `match.is_joker`.
+ */
 export interface ScorablePrediction {
   home_pred: number;
   away_pred: number;
-  is_joker: boolean;
+  is_joker?: boolean; // DEPRECATED / ignored by the engine — see ScorableMatch.is_joker
 }
 
 /** Minimal shape of a match result the engine needs to score against. */
@@ -54,6 +63,7 @@ export interface ScorableMatch {
   home_score: number | null;
   away_score: number | null;
   status: MatchStatus;
+  is_joker: boolean; // admin-designated joker match → ×joker_multiplier for ALL users
 }
 
 /**
@@ -66,8 +76,9 @@ export interface ScorableMatch {
  *      + `settings.diff_bonus` when `diff_bonus_enabled` and the goal
  *        difference also matches
  *  - else                                            → 0
- * The final total is multiplied by `settings.joker_multiplier` when the
- * prediction is a joker.
+ * The final total is multiplied by `settings.joker_multiplier` when the MATCH
+ * is a joker (`match.is_joker`) — the joker is admin-designated per match and
+ * applies to every user's prediction on that match.
  *
  * Each rule is independently gated by its `*_enabled` flag, so a disabled
  * exact rule falls through to the sign rule, and a disabled sign rule yields 0
@@ -109,7 +120,7 @@ export function scorePrediction(
     }
   }
 
-  if (prediction.is_joker) {
+  if (match.is_joker) {
     points *= settings.joker_multiplier;
   }
 
@@ -128,13 +139,22 @@ export type BonusAnswerValue = string | string[] | number;
  * Per `BonusType`:
  *  - `"single"`  : string equality.
  *  - `"numeric"` : numeric equality (coerces string/number).
+ *  - `"text"`    : case-insensitive, trimmed string equality. Both the answer
+ *    and the correct answer are coerced to string, then `.trim().toLowerCase()`
+ *    before comparison.
  *  - `"multi"`   : ALL-OR-NOTHING set equality — full points only when the
  *    answer set equals the correct set exactly (order-independent, duplicates
  *    ignored). No partial credit is awarded. This keeps scoring simple and
  *    unambiguous; a partial-credit scheme can be layered on later if desired.
  *
- * A malformed answer (wrong runtime shape for the question type) scores 0
- * rather than throwing.
+ * DECISION — multi-type partial credit: the `"multi"` type is intentionally
+ * all-or-nothing. A correct answer set must equal the expected set exactly;
+ * any missing or extra option yields 0. We chose this over fractional credit
+ * to keep the leaderboard math integer-only, deterministic, and easy to
+ * explain to players, and to avoid ambiguity about how to weight partials.
+ *
+ * A malformed answer (wrong runtime shape for the question type, including
+ * null/undefined for text) scores 0 rather than throwing.
  */
 export function scoreBonusAnswer(
   answer: BonusAnswerValue,
@@ -162,6 +182,14 @@ function matchesBonus(
         return false;
       }
       return answer === correct;
+    }
+    case "text": {
+      if (answer === null || answer === undefined) return false;
+      if (correct === null || correct === undefined) return false;
+      if (Array.isArray(answer) || Array.isArray(correct)) return false;
+      const a = String(answer).trim().toLowerCase();
+      const c = String(correct).trim().toLowerCase();
+      return a === c;
     }
     case "multi": {
       if (!Array.isArray(answer) || !Array.isArray(correct)) return false;
@@ -215,4 +243,135 @@ export function recomputePredictionPoints(
       points_awarded: match ? scorePrediction(p, match, settings) : null,
     };
   });
+}
+
+// ============================================================================
+// Meta-volante (round-champion) scoring
+// ============================================================================
+
+/**
+ * Map a match to its meta-volante round key.
+ *
+ *  - `"group"`        → `"group-md${matchday}"` (matchday must be 1, 2 or 3).
+ *  - `"round_of_32"`  → `"round_of_32"`
+ *  - `"round_of_16"`  → `"round_of_16"`
+ *  - `"quarter"`      → `"quarter"`
+ *  - `"semi"`         → `"semi"`
+ *  - `"final"`        → `"final"`
+ *  - `"third_place"`  → `"final"` (third-place folds into the final round).
+ *
+ * Group matches always carry a matchday (1..3) after the schema migration, so a
+ * null/invalid matchday for a group match is a data error: we THROW rather than
+ * silently bucketing into a wrong round, which would corrupt round standings.
+ */
+export function roundKeyForMatch(match: {
+  stage: Stage;
+  matchday: number | null;
+}): RoundKey {
+  switch (match.stage) {
+    case "group": {
+      const md = match.matchday;
+      if (md !== 1 && md !== 2 && md !== 3) {
+        throw new Error(
+          `roundKeyForMatch: group match requires matchday 1|2|3, got ${String(md)}`,
+        );
+      }
+      return `group-md${md}`;
+    }
+    case "round_of_32":
+      return "round_of_32";
+    case "round_of_16":
+      return "round_of_16";
+    case "quarter":
+      return "quarter";
+    case "semi":
+      return "semi";
+    case "third_place":
+      return "final";
+    case "final":
+      return "final";
+    default: {
+      // Exhaustiveness guard — unreachable for valid Stage values.
+      const _exhaustive: never = match.stage;
+      throw new Error(`roundKeyForMatch: unknown stage ${String(_exhaustive)}`);
+    }
+  }
+}
+
+/** One player's tallied prediction performance within a single round. */
+export interface RoundEntry {
+  user_id: string;
+  round_points: number;
+  exact_hits: number;
+}
+
+/** A meta-volante award row produced for a round. */
+export interface RoundWinner {
+  user_id: string;
+  points: number;
+  round_points: number;
+}
+
+/**
+ * Pick the round champion(s) (meta volante) for a single round.
+ *
+ * Selection:
+ *  1. Find the max `round_points`. Candidates = all entries with that max.
+ *  2. If the max is <= 0 (nobody scored positively in the round), there is no
+ *     champion → return [].
+ *  3. Single candidate → it wins `awardPoints`.
+ *  4. Tie on `round_points` → break by max `exact_hits` among the candidates.
+ *     A single entry with the most exact hits wins `awardPoints`.
+ *  5. STILL tied (same round_points AND same exact_hits, n entries) → SPLIT:
+ *     each tied winner gets `Math.floor(awardPoints / n)`. Integer points only;
+ *     any remainder is dropped (documented behavior — keeps standings integer
+ *     and avoids fractional awards / rounding disputes).
+ *
+ * Pure & deterministic: output depends only on the inputs. Winner order follows
+ * the input order of the tied entries.
+ */
+export function pickRoundWinners(
+  entries: readonly RoundEntry[],
+  awardPoints: number,
+): RoundWinner[] {
+  if (entries.length === 0) return [];
+
+  let maxPoints = -Infinity;
+  for (const e of entries) {
+    if (e.round_points > maxPoints) maxPoints = e.round_points;
+  }
+
+  // A round with no positive score has no champion.
+  if (maxPoints <= 0) return [];
+
+  const topByPoints = entries.filter((e) => e.round_points === maxPoints);
+
+  if (topByPoints.length === 1) {
+    const w = topByPoints[0];
+    return [
+      { user_id: w.user_id, points: awardPoints, round_points: w.round_points },
+    ];
+  }
+
+  // Tie on round_points → break by exact_hits.
+  let maxExact = -Infinity;
+  for (const e of topByPoints) {
+    if (e.exact_hits > maxExact) maxExact = e.exact_hits;
+  }
+  const winners = topByPoints.filter((e) => e.exact_hits === maxExact);
+
+  if (winners.length === 1) {
+    const w = winners[0];
+    return [
+      { user_id: w.user_id, points: awardPoints, round_points: w.round_points },
+    ];
+  }
+
+  // Full tie → split, integer floor, remainder dropped.
+  const share = Math.floor(awardPoints / winners.length);
+  return winners.map((w) => ({
+    user_id: w.user_id,
+    points: share,
+    round_points: w.round_points,
+  }));
 }
