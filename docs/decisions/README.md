@@ -11,6 +11,7 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | # | Date | Title | Status | Summary |
 |---|------|-------|--------|---------|
 | [0001](0001-scoring-overhaul.md) | 2026-06-09 | Scoring system overhaul | Accepted (code merged, migration unapplied) | ×10 points, admin-assigned jokers, meta volante, group-winner bonuses, free-text bonus type |
+| [0002](0002-manual-results-no-live-data.md) | 2026-06-09 | Manual results — no live data provider | Accepted | Admin enters scores by hand + manual recalc; cron & external poller removed; provider/route kept dormant |
 
 ## How to add a decision
 

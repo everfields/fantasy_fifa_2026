@@ -13,7 +13,7 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 - **Next.js 14** (App Router) + TypeScript + Tailwind + shadcn/ui-style components
 - **Supabase** (Postgres + Auth + Realtime + RLS) — per-user isolation via Row-Level Security
 - **Hosting:** Vercel (app) + Supabase (managed DB)
-- **Football data:** `FootballDataProvider` interface; start with football-data.org (free), optional API-Football (paid, live data)
+- **Football data:** results are entered **manually by the admin** — no live provider, no polling cron (see `docs/decisions/0002-manual-results-no-live-data.md`). The `FootballDataProvider` interface, impls, the `/api/cron/update-results` route and `CRON_SECRET` are kept **dormant** for a possible future re-enable.
 
 ## Architecture rules (non-negotiable)
 1. **Shared contract = `lib/types.ts`.** All domain types live there and mirror the DB schema. Keep in sync with `/db/migrations`.
