@@ -145,22 +145,6 @@ export function ScoringForm({ settings }: { settings: AppSettings }) {
               defaultValue={s.joker_multiplier}
             />
           </Field>
-          <Field
-            id="jokers_per_user"
-            label="Jokers por jugador (obsoleto)"
-            hint="DEPRECADO: los jokers ya no son por jugador, se asignan por partido. Se conserva por compatibilidad."
-            error={err.jokers_per_user}
-          >
-            <Input
-              id="jokers_per_user"
-              name="jokers_per_user"
-              type="number"
-              min={0}
-              defaultValue={settings.jokers_per_user}
-              disabled
-              className="opacity-60"
-            />
-          </Field>
         </CardContent>
       </Card>
 

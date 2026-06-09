@@ -1,7 +1,7 @@
 # ADR-0001: Scoring system overhaul
 
 - **Date:** 2026-06-09
-- **Status:** Accepted — code merged & green (typecheck, 53/53 scoring tests, build). ⚠️ Migration `0004` not yet applied to any live DB; nothing committed to git yet.
+- **Status:** Accepted — committed on `feature/scoring-overhaul` (pushed); migration `0004` applied to the live Supabase DB (2026-06-09). Pending: admin config (mark joker matches, generate group-winner questions, recalc) and PR merge to `main` → prod.
 - **Supersedes:** Baseline scoring in `PROJECT_PLAN.md` §3 (and the joker model in §2/§4/§7).
 
 ## Context

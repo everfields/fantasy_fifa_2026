@@ -71,8 +71,8 @@ export async function saveScoring(
   const before = await getAppSettingsAdmin();
 
   // Preserve admin extension arrays (bans / payments) and unknown keys the form
-  // does not touch (spread `before`). `jokers_per_user` is deprecated and its
-  // input is disabled (so it never submits) — carry the stored value forward.
+  // does not touch (spread `before`). `jokers_per_user` is deprecated — its input
+  // was removed from the form (jokers are per-match) — so carry the stored value forward.
   const after = {
     ...before,
     scoring: {
