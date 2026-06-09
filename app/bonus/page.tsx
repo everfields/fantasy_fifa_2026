@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import type { BonusAnswer, BonusCategory, BonusQuestion } from "@/lib/types";
@@ -12,6 +14,7 @@ import { Countdown } from "@/components/Countdown";
 
 import { AppShell } from "../_components/shell";
 import { BonusForm } from "./bonus-form";
+import { BonusBlocks, type BlockMeta } from "./bonus-blocks";
 
 export const metadata = { title: "Bonus · Mundial 26" };
 export const dynamic = "force-dynamic";
@@ -132,41 +135,59 @@ export default async function BonusPage() {
           </p>
         </header>
 
-        {questions.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Todavía no hay preguntas bonus publicadas.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-10">
-            {BLOCKS.map((block) => {
-              const blockQuestions = byCategory(block.category);
-              if (blockQuestions.length === 0) return null;
-              return (
-                <section key={block.category} className="space-y-4">
-                  <div className="flex flex-wrap items-end justify-between gap-2 border-b pb-2">
-                    <div className="space-y-1">
-                      <h2 className="text-xl font-bold tracking-tight">
-                        {block.title}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {block.description}
-                      </p>
-                    </div>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {blockQuestions.length}{" "}
-                      {blockQuestions.length === 1 ? "pregunta" : "preguntas"}
-                    </span>
-                  </div>
-                  <div className="grid gap-5">
-                    {blockQuestions.map((q) => renderCard(q))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        )}
+        {(() => {
+          if (questions.length === 0) {
+            return (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Todavía no hay preguntas bonus publicadas.
+                </CardContent>
+              </Card>
+            );
+          }
+
+          // Per-block metadata (counts, answered, still-open unanswered).
+          const blockMeta: BlockMeta[] = BLOCKS.map((block) => {
+            const bq = byCategory(block.category);
+            const answered = bq.filter((q) => answerByQ.has(q.id)).length;
+            const pending = bq.filter(
+              (q) =>
+                !answerByQ.has(q.id) &&
+                new Date(q.locks_at).getTime() > now,
+            ).length;
+            return {
+              category: block.category,
+              title: block.title,
+              description: block.description,
+              total: bq.length,
+              answered,
+              pending,
+            };
+          });
+
+          // Server-render each block's question cards, keyed by category.
+          const panels = {} as Record<BonusCategory, ReactNode>;
+          for (const block of BLOCKS) {
+            panels[block.category] = byCategory(block.category).map((q) =>
+              renderCard(q),
+            );
+          }
+
+          // Default: first block with an OPEN unanswered question; else first
+          // non-empty block; else first block (all empty handled above).
+          const initialSelected =
+            blockMeta.find((b) => b.pending > 0)?.category ??
+            blockMeta.find((b) => b.total > 0)?.category ??
+            BLOCKS[0].category;
+
+          return (
+            <BonusBlocks
+              blocks={blockMeta}
+              initialSelected={initialSelected}
+              panels={panels}
+            />
+          );
+        })()}
       </div>
     </AppShell>
   );
