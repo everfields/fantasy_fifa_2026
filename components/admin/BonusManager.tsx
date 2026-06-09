@@ -28,12 +28,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { SubmitButton } from "./SubmitButton";
 import {
   closeBonus,
+  deleteBonus,
   generateGroupWinnerQuestions,
+  gradeTextAnswer,
   upsertBonus,
   type BonusActionState,
 } from "@/app/admin/bonus/actions";
 
 const initial: BonusActionState = { ok: false, message: "" };
+
+/** One player's free-text answer to a text question, for manual validation. */
+export interface TextAnswerRow {
+  id: string;
+  user_id: string;
+  display_name: string;
+  answer: string;
+  manual_correct: boolean | null;
+}
 
 const TYPE_LABEL: Record<BonusType, string> = {
   single: "Opción única",
@@ -67,10 +78,12 @@ function Msg({ state }: { state: BonusActionState }) {
 
 export function BonusManager({
   questions,
+  answersByQuestion = {},
   bonusDefaultPoints,
   groupWinnerPoints,
 }: {
   questions: BonusQuestion[];
+  answersByQuestion?: Record<string, TextAnswerRow[]>;
   bonusDefaultPoints: number;
   groupWinnerPoints: number;
 }) {
@@ -91,7 +104,13 @@ export function BonusManager({
             </CardContent>
           </Card>
         ) : (
-          questions.map((q) => <QuestionCard key={q.id} q={q} />)
+          questions.map((q) => (
+            <QuestionCard
+              key={q.id}
+              q={q}
+              answers={answersByQuestion[q.id] ?? []}
+            />
+          ))
         )}
       </div>
     </div>
@@ -230,47 +249,243 @@ function QuestionForm({
   );
 }
 
-function QuestionCard({ q }: { q: BonusQuestion }) {
-  const closed = q.correct_answer !== null;
+function QuestionCard({
+  q,
+  answers,
+}: {
+  q: BonusQuestion;
+  answers: TextAnswerRow[];
+}) {
+  const isText = q.type === "text";
   const locked = new Date(q.locks_at).getTime() <= Date.now();
+
+  // Text questions are graded per-answer, not by closing the question. Their
+  // status is derived from the answers: fully validated vs. pending count.
+  const pendingCount = answers.filter((a) => a.manual_correct === null).length;
+  const allValidated = answers.length > 0 && pendingCount === 0;
+
+  // single/multi/numeric still "close" by recording a correct answer.
+  const closed = !isText && q.correct_answer !== null;
 
   return (
     <Card>
-      <CardContent className="flex flex-wrap items-start justify-between gap-4 py-5">
-        <div className="min-w-0 flex-1">
-          <div className="mb-1.5 flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{TYPE_LABEL[q.type]}</Badge>
-            <Badge variant="secondary">{q.points} pts</Badge>
+      <CardContent className="flex flex-col gap-3 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1.5 flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{TYPE_LABEL[q.type]}</Badge>
+              <Badge variant="secondary">{q.points} pts</Badge>
+              {isText ? (
+                allValidated ? (
+                  <Badge>Validada</Badge>
+                ) : answers.length === 0 ? (
+                  <Badge variant="outline">Sin respuestas</Badge>
+                ) : (
+                  <Badge variant="destructive">
+                    {pendingCount} sin validar
+                  </Badge>
+                )
+              ) : closed ? (
+                <Badge>Cerrada</Badge>
+              ) : locked ? (
+                <Badge variant="destructive">Bloqueada · sin respuesta</Badge>
+              ) : (
+                <Badge variant="outline">Abierta</Badge>
+              )}
+            </div>
+            <p className="font-medium text-zinc-900">{q.text}</p>
+            {q.options?.length ? (
+              <p className="mt-1 text-xs text-zinc-400">
+                {q.options.join(" · ")}
+              </p>
+            ) : null}
             {closed ? (
-              <Badge>Cerrada</Badge>
-            ) : locked ? (
-              <Badge variant="destructive">Bloqueada · sin respuesta</Badge>
-            ) : (
-              <Badge variant="outline">Abierta</Badge>
-            )}
+              <p className="mt-1 text-xs text-primary">
+                Correcta:{" "}
+                {Array.isArray(q.correct_answer)
+                  ? q.correct_answer.join(", ")
+                  : String(q.correct_answer)}
+              </p>
+            ) : null}
           </div>
-          <p className="font-medium text-zinc-900">{q.text}</p>
-          {q.options?.length ? (
-            <p className="mt-1 text-xs text-zinc-400">
-              {q.options.join(" · ")}
-            </p>
-          ) : null}
-          {closed ? (
-            <p className="mt-1 text-xs text-primary">
-              Correcta:{" "}
-              {Array.isArray(q.correct_answer)
-                ? q.correct_answer.join(", ")
-                : String(q.correct_answer)}
-            </p>
-          ) : null}
+
+          <div className="flex shrink-0 items-center gap-2">
+            <EditQuestionDialog q={q} />
+            {/* Text questions are graded per-answer below, not via a close dialog. */}
+            {!isText ? <CloseQuestionDialog q={q} /> : null}
+            <DeleteQuestionDialog q={q} answerCount={answers.length} />
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <EditQuestionDialog q={q} />
-          <CloseQuestionDialog q={q} />
-        </div>
+        {isText ? <TextValidationPanel q={q} answers={answers} /> : null}
       </CardContent>
     </Card>
+  );
+}
+
+function TextValidationPanel({
+  q,
+  answers,
+}: {
+  q: BonusQuestion;
+  answers: TextAnswerRow[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (answers.length === 0) {
+    return (
+      <p className="text-xs text-zinc-400">
+        Todavía no hay respuestas de jugadores para validar.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50/60">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-zinc-700"
+      >
+        <span>Validar respuestas ({answers.length})</span>
+        <span className="text-zinc-400">{open ? "▲" : "▼"}</span>
+      </button>
+      {open ? (
+        <ul className="divide-y divide-zinc-200 border-t border-zinc-200">
+          {answers.map((a) => (
+            <TextAnswerItem key={a.id} questionPoints={q.points} answer={a} />
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function TextAnswerItem({
+  answer,
+  questionPoints,
+}: {
+  answer: TextAnswerRow;
+  questionPoints: number;
+}) {
+  const [state, action] = useFormState(gradeTextAnswer, initial);
+
+  const state_label =
+    answer.manual_correct === true ? (
+      <span className="text-xs font-semibold text-primary">✓ correcta</span>
+    ) : answer.manual_correct === false ? (
+      <span className="text-xs font-semibold text-destructive">
+        ✗ incorrecta
+      </span>
+    ) : (
+      <span className="text-xs font-medium text-zinc-400">sin validar</span>
+    );
+
+  return (
+    <li className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-zinc-900">
+          {answer.display_name}
+        </p>
+        <p className="text-sm text-zinc-600">“{answer.answer}”</p>
+        <div className="mt-0.5 flex items-center gap-2">
+          {state_label}
+          {answer.manual_correct === true ? (
+            <span className="text-xs text-zinc-400">+{questionPoints} pts</span>
+          ) : null}
+          {state.message ? (
+            <span
+              className={
+                state.ok
+                  ? "text-xs text-primary"
+                  : "text-xs text-destructive"
+              }
+            >
+              {state.message}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <form action={action}>
+          <input type="hidden" name="answer_id" value={answer.id} />
+          <input type="hidden" name="correct" value="true" />
+          <SubmitButton
+            size="sm"
+            variant={answer.manual_correct === true ? "default" : "outline"}
+            pendingLabel="…"
+          >
+            Correcta
+          </SubmitButton>
+        </form>
+        <form action={action}>
+          <input type="hidden" name="answer_id" value={answer.id} />
+          <input type="hidden" name="correct" value="false" />
+          <SubmitButton
+            size="sm"
+            variant={
+              answer.manual_correct === false ? "destructive" : "outline"
+            }
+            pendingLabel="…"
+          >
+            Incorrecta
+          </SubmitButton>
+        </form>
+      </div>
+    </li>
+  );
+}
+
+function DeleteQuestionDialog({
+  q,
+  answerCount,
+}: {
+  q: BonusQuestion;
+  answerCount: number;
+}) {
+  const [state, action] = useFormState(deleteBonus, initial);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="destructive" size="sm">
+          Eliminar
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Eliminar pregunta</DialogTitle>
+          <DialogDescription>{q.text}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-zinc-600">
+            Esta acción es <strong>irreversible</strong>. Se borrará también
+            todas las respuestas de los jugadores
+            {answerCount > 0 ? ` (${answerCount} respuesta(s))` : ""} y los
+            puntos ya repartidos por esta pregunta desaparecerán de la
+            clasificación.
+          </p>
+          <form action={action} className="flex items-center justify-between gap-3">
+            <input type="hidden" name="id" value={q.id} />
+            <Msg state={state} />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <SubmitButton size="sm" variant="destructive" pendingLabel="Eliminando…">
+                Sí, eliminar
+              </SubmitButton>
+            </div>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

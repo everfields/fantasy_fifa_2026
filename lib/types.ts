@@ -78,7 +78,7 @@ export interface BonusQuestion {
   type: BonusType;
   options: string[] | null; // for single/multi; null for numeric/text
   points: number;
-  correct_answer: string | string[] | number | null; // text → string (case-insensitive match)
+  correct_answer: string | string[] | number | null; // text → NOT used for grading: free-text answers are validated per-player by the admin (BonusAnswer.manual_correct)
   locks_at: string;
 }
 
@@ -103,6 +103,21 @@ export interface BonusAnswer {
   question_id: string;
   answer: string | string[] | number;
   points_awarded: number | null;
+  manual_correct: boolean | null; // text questions only: admin-validated per answer; null = not yet graded
+}
+
+/**
+ * An arbitrary admin-granted point adjustment (positive or negative) for a
+ * user, covering unforeseen events. Summed into standings by
+ * refresh_standings(). Always carries a human-readable reason; audit-logged.
+ */
+export interface PointAdjustment {
+  id: string;
+  user_id: string;
+  points: number; // can be negative
+  reason: string;
+  created_by: string | null; // admin profile id
+  created_at: string;
 }
 
 export interface StandingRow {
@@ -113,6 +128,7 @@ export interface StandingRow {
   exact_hits: number;
   bonus_points: number;
   meta_points: number; // sum of meta-volante (round-champion) awards
+  adjustment_points: number; // sum of admin point_adjustments (can be negative)
   rank: number;
 }
 
@@ -135,6 +151,73 @@ export interface AppSettings {
   pot_amount: number;
   season_locked: boolean;
   live_polling_seconds: number;
+}
+
+// ============================================================================
+// "Luis de la Tracker" — AI prediction-strategy tracker
+// A daily cron runs a PURE deterministic analysis of every player's prediction
+// strategy vs. results (lib/tracker/analysis.ts), then an LLM verbalizes the
+// top 5 key findings in the persona of the Spanish NT coach (lib/tracker/luis.ts).
+// Stored in `tracker_reports`. See docs/decisions/0003-luis-de-la-tracker.md.
+// ============================================================================
+
+/** A single summary number shown in the report header (e.g. "Pleno del día — 2"). */
+export interface TrackerStat {
+  label: string;
+  value: string;
+}
+
+/**
+ * One deterministic, factual "candidate finding" produced by the analysis
+ * engine. This is the RAW MATERIAL the LLM verbalizes — never invented by the
+ * model. `detail` is a neutral sentence carrying the numbers; the LLM rewrites
+ * it in character. `magnitude` (0..1) ranks salience so we feed the model the
+ * strongest, most varied candidates.
+ */
+export interface TrackerCandidateFinding {
+  key: string; // stable id, e.g. "crack_del_dia"
+  category: string; // grouping, e.g. "rendimiento" | "riesgo" | "rebaño"
+  title: string; // neutral short title
+  detail: string; // factual sentence(s) with the numbers
+  subjects: string[]; // player display names involved
+  magnitude: number; // 0..1 salience for ranking
+}
+
+/** The full deterministic analysis snapshot for one day (pure, no LLM). */
+export interface TrackerAnalysis {
+  reportDate: string; // YYYY-MM-DD (UTC calendar date)
+  playerCount: number;
+  matchesAnalyzed: number; // # of the day's finished matches
+  finishedTotal: number; // # of finished matches across the whole tournament
+  headlineStats: TrackerStat[]; // a few summary numbers for the header
+  candidateFindings: TrackerCandidateFinding[]; // ranked, strongest first
+}
+
+/** One verbalized key finding, in Luis's voice. */
+export interface TrackerFinding {
+  title: string; // punchy, ≤ ~6 words
+  body: string; // 2–4 sentences in character, citing real names + numbers
+}
+
+/** What the LLM returns (validated) — the verbalization layer only. */
+export interface TrackerVerbalization {
+  headline: string; // one cocky intro line
+  findings: TrackerFinding[]; // exactly 5
+}
+
+export type TrackerStatus = "generated" | "analysis_only";
+
+/** A persisted daily report (`tracker_reports` row). */
+export interface TrackerReport {
+  id: string;
+  report_date: string; // YYYY-MM-DD
+  headline: string;
+  findings: TrackerFinding[];
+  analysis: TrackerAnalysis;
+  model: string | null; // LLM id, or null when analysis-only
+  status: TrackerStatus;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuditEntry {

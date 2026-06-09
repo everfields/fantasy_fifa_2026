@@ -14,6 +14,7 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 - **Supabase** (Postgres + Auth + Realtime + RLS) — per-user isolation via Row-Level Security
 - **Hosting:** Vercel (app) + Supabase (managed DB)
 - **Football data:** results are entered **manually by the admin** — no live provider, no polling cron (see `docs/decisions/0002-manual-results-no-live-data.md`). The `FootballDataProvider` interface, impls, the `/api/cron/update-results` route and `CRON_SECRET` are kept **dormant** for a possible future re-enable.
+- **AI ("Luis de la Tracker"):** Anthropic SDK (`@anthropic-ai/sdk`, `ANTHROPIC_API_KEY`, model `TRACKER_MODEL` ?? `claude-opus-4-8`) verbalizes a daily prediction-strategy analysis in persona. Daily Vercel cron. See `docs/decisions/0003-luis-de-la-tracker.md`.
 
 ## Architecture rules (non-negotiable)
 1. **Shared contract = `lib/types.ts`.** All domain types live there and mirror the DB schema. Keep in sync with `/db/migrations`.
@@ -24,12 +25,13 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 6. **Path alias:** `@/*` maps to repo root.
 
 ## Directory map
-- `app/` — routes. `(auth)`, `dashboard`, `matches`, `standings`, `bonus`, `match/[id]`, `chat`, `admin/*`, `api/*`
+- `app/` — routes. `(auth)`, `dashboard`, `matches`, `standings`, `bonus`, `match/[id]`, `chat`, `tracker`, `admin/*`, `api/*` (incl. `api/cron/luis-tracker`)
 - `lib/supabase` — browser (`client.ts`) + server (`server.ts`, incl. `createServiceClient` for cron/admin)
 - `lib/providers` — `FootballDataProvider` interface + impls
 - `lib/scoring` — pure scoring engine (reads `AppSettings`)
+- `lib/tracker` — "Luis de la Tracker": `analysis.ts` (pure), `persona.ts`, `luis.ts` (LLM), `brand.ts`
 - `lib/auth` — role guards
-- `components/` — `ui/` (shadcn), `MatchCard`, `PredictionForm`, `RankingTable`, `PointsChart`, `Countdown`, `admin/*`
+- `components/` — `ui/` (shadcn), `MatchCard`, `PredictionForm`, `RankingTable`, `PointsChart`, `Countdown`, `LuisTracker`, `admin/*`
 - `db/migrations` — schema + RLS + triggers; `db/seed` — teams + WC2026 calendar
 
 ## Scoring (defaults, all in `app_settings`) — see `docs/decisions/0001-scoring-overhaul.md`
@@ -41,14 +43,32 @@ multiplies *every* user's points on it by `joker_multiplier` (default ×3). `pre
 and `app_settings.jokers_per_user` are deprecated/back-compat only; scoring reads `match.is_joker`.
 Target joker counts (admin picks freely): group 1/matchday = 3, R32 = 2, R16 = 2, QF = 1, SF = 1, F = 1.
 
-**Bonus questions** default to 100 pts; types `single | multi | numeric | text` (text = free-text,
-case-insensitive). Group winner = auto-generated `single` bonus per group (admin button, 50 pts).
+**Bonus questions** default to 100 pts; types `single | multi | numeric | text`. `text` (free-text)
+is graded **manually per answer by the admin** (`bonus_answers.manual_correct`, panel in
+`/admin/bonus`) — never by string comparison (see `docs/decisions/0004`). Questions can be deleted
+from the admin (cascade + audit + standings refresh). Group winner = auto-generated `single` bonus
+per group (admin button, 50 pts). The manual recalc grades predictions AND bonus answers.
+
+**Point adjustments:** arbitrary ± points per player for unforeseen events live in
+`point_adjustments` (reason required, admin-only writes, UI in `/admin/users`); summed into
+standings by `refresh_standings()`. Never hand-edit `points_awarded` — recalc reverts it.
 
 **Meta volante (round champion):** most prediction points in a round earns `meta_volante_points`
 (default 100), stored in `round_awards` and summed into `standings_cache.meta_points` + total by
 `refresh_standings()`. Rounds: group-md1/2/3 (`matches.matchday`) + each knockout stage
 (third_place folds into final). Ties break by exact hits in the round, then split. Computed in the
 MANUAL recalc only (`pickRoundWinners` in `lib/scoring`).
+
+## Luis de la Tracker (AI tracker) — see `docs/decisions/0003-luis-de-la-tracker.md`
+Daily AI "parte" parodying Spain coach Luis de la Fuente (seco, chulesco, sobrado). Pipeline:
+**pure analysis** (`lib/tracker/analysis.ts`, deterministic, unit-tested — detects cracks,
+batacazos, rebaño, perfiles de riesgo, jóker, clasificación) → **LLM verbalization**
+(`lib/tracker/luis.ts`, Anthropic SDK, persona in `lib/tracker/persona.ts`) → **`tracker_reports`**
+(one row/day) → `/tracker` page + dashboard teaser. **HARD RULE: the LLM only verbalizes, never
+invents numbers/names** — new insights = new patterns in `analysis.ts` (+ a test), not prompt
+embellishment. Trigger: daily Vercel cron `GET /api/cron/luis-tracker` (`CRON_SECRET`; idempotent
+upsert; `?date=`/`?force`). No key / API failure → deterministic `analysis_only` report. The single
+daily `crons` entry is Hobby-legal and does **not** resurrect live-data polling (ADR-0002 stands).
 
 ## Build tooling (`.claude/`)
 - **`/build-phase [1-8|all]`** — orchestrator command: fans out the specialist agents for a PROJECT_PLAN phase, then reconciles (typecheck → tests → build).

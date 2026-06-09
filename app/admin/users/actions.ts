@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import type { Profile, Role } from "@/lib/types";
+import type { PointAdjustment, Profile, Role } from "@/lib/types";
 
 import {
   adminActor,
@@ -168,4 +168,118 @@ export async function setBan(
 
   revalidatePath("/admin/users");
   return { ok: true, message: banned ? "Jugador baneado." : "Baneo retirado." };
+}
+
+const addAdjustmentSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    points: z.coerce
+      .number()
+      .int("Debe ser un entero")
+      .refine((n) => n !== 0, "El ajuste no puede ser 0"),
+    reason: z.string().trim().min(3, "Indica un motivo (mín. 3 caracteres)").max(500),
+  })
+  .strict();
+
+/**
+ * Grant or remove arbitrary points for a player (positive or negative integer),
+ * for unforeseen events. A human-readable reason is REQUIRED. Inserts into
+ * `point_adjustments` (refresh_standings folds these into total_points and
+ * standings_cache.adjustment_points), audits, and refreshes standings.
+ */
+export async function addPointAdjustment(
+  _prev: UserActionState,
+  form: FormData,
+): Promise<UserActionState> {
+  const actor = await adminActor();
+  const parsed = addAdjustmentSchema.safeParse({
+    user_id: form.get("user_id"),
+    points: form.get("points"),
+    reason: form.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Datos inválidos.",
+    };
+  }
+
+  const { user_id, points, reason } = parsed.data;
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("point_adjustments")
+    .insert({ user_id, points, reason, created_by: actor.id })
+    .select("*")
+    .single();
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "add_point_adjustment",
+    target_type: "point_adjustment",
+    target_id: (data as PointAdjustment | null)?.id ?? null,
+    after: { user_id, points, reason },
+  });
+
+  const { error: rpcError } = await supabase.rpc("refresh_standings");
+  if (rpcError) {
+    return {
+      ok: false,
+      message: `Ajuste guardado, pero falló refresh_standings: ${rpcError.message}`,
+    };
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/standings");
+  return {
+    ok: true,
+    message: `Ajuste de ${points > 0 ? "+" : ""}${points} pts aplicado.`,
+  };
+}
+
+const deleteAdjustmentSchema = z.object({ id: z.string().uuid() }).strict();
+
+/** Remove a previously-granted point adjustment, then refresh standings. */
+export async function deletePointAdjustment(
+  _prev: UserActionState,
+  form: FormData,
+): Promise<UserActionState> {
+  const actor = await adminActor();
+  const parsed = deleteAdjustmentSchema.safeParse({ id: form.get("id") });
+  if (!parsed.success) return { ok: false, message: "Datos inválidos." };
+
+  const { id } = parsed.data;
+  const supabase = createServiceClient();
+
+  const { data: before } = await supabase
+    .from("point_adjustments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (!before) return { ok: false, message: "Ajuste no encontrado." };
+
+  const { error } = await supabase.from("point_adjustments").delete().eq("id", id);
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "delete_point_adjustment",
+    target_type: "point_adjustment",
+    target_id: id,
+    before: before as PointAdjustment,
+    after: null,
+  });
+
+  const { error: rpcError } = await supabase.rpc("refresh_standings");
+  if (rpcError) {
+    return {
+      ok: false,
+      message: `Ajuste borrado, pero falló refresh_standings: ${rpcError.message}`,
+    };
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/standings");
+  return { ok: true, message: "Ajuste eliminado." };
 }

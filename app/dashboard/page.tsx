@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import type { Match, Prediction, StandingRow } from "@/lib/types";
+import type { Match, Prediction, StandingRow, TrackerReport } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
 import { MatchCard } from "@/components/MatchCard";
+import { LuisDashboardTeaser } from "@/components/LuisTracker";
 
 import { AppShell } from "../_components/shell";
 import { getTeamMap, matchdayLabel, matchdayKey, teamOr } from "../_lib/data";
@@ -30,6 +31,7 @@ export default async function DashboardPage() {
     { count: playerCount },
     { data: upcoming },
     { data: myPredictions },
+    { data: latestTracker },
   ] = await Promise.all([
     getTeamMap(),
     supabase
@@ -48,9 +50,16 @@ export default async function DashboardPage() {
       .from("predictions")
       .select("*")
       .eq("user_id", profile.id),
+    supabase
+      .from("tracker_reports")
+      .select("*")
+      .order("report_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const standing = (myStanding as StandingRow | null) ?? null;
+  const trackerReport = (latestTracker as TrackerReport | null) ?? null;
   const upcomingMatches = (upcoming as Match[] | null) ?? [];
   const predictionByMatch = new Map<string, Prediction>(
     ((myPredictions as Prediction[] | null) ?? []).map((p) => [p.match_id, p]),
@@ -169,6 +178,14 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Luis de la Tracker — latest AI report. */}
+        {trackerReport && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-black tracking-tight">El parte de Luis</h2>
+            <LuisDashboardTeaser report={trackerReport} />
+          </section>
+        )}
 
         {/* Quick links. */}
         <section className="grid gap-4 sm:grid-cols-3">

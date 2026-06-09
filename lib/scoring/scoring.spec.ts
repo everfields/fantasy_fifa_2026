@@ -303,34 +303,62 @@ test("recompute is idempotent (joker comes from the match)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// scoreBonusAnswer — text type
+// scoreBonusAnswer — text type (MANUALLY graded; correct_answer ignored)
 // ---------------------------------------------------------------------------
-test("text exact match awards points", () => {
-  assert.equal(scoreBonusAnswer("Messi", q("text", "Messi")), 10);
-});
-
-test("text is case- and whitespace-insensitive", () => {
-  assert.equal(scoreBonusAnswer("  mEsSi ", q("text", "Messi")), 10);
-  assert.equal(scoreBonusAnswer("LIONEL messi", q("text", " lionel Messi  ")), 10);
-});
-
-test("text wrong answer awards 0", () => {
-  assert.equal(scoreBonusAnswer("Ronaldo", q("text", "Messi")), 0);
-});
-
-test("text coerces numeric answer to string", () => {
-  assert.equal(scoreBonusAnswer(7 as unknown as string, q("text", "7")), 10);
-});
-
-test("text ungraded (null correct) → null", () => {
+test("text ungraded (manualCorrect omitted) → null", () => {
   assert.equal(scoreBonusAnswer("Messi", q("text", null)), null);
 });
 
-test("text malformed (array answer) scores 0, not throw", () => {
+test("text ungraded (manualCorrect null) → null", () => {
+  assert.equal(scoreBonusAnswer("Messi", q("text", null), null), null);
+});
+
+test("text with correct_answer set but no manualCorrect → still null", () => {
+  // correct_answer is IGNORED for text — grading is manual only.
+  assert.equal(scoreBonusAnswer("Messi", q("text", "Messi")), null);
+});
+
+test("text manualCorrect true awards points", () => {
+  assert.equal(scoreBonusAnswer("anything", q("text", null), true), 10);
+});
+
+test("text manualCorrect false awards 0", () => {
+  assert.equal(scoreBonusAnswer("anything", q("text", null), false), 0);
+});
+
+test("text manual grading ignores correct_answer entirely", () => {
+  // answer mismatches correct_answer string, but admin marked it correct.
+  assert.equal(scoreBonusAnswer("Lio", q("text", "Messi"), true), 10);
+  // answer matches correct_answer string, but admin marked it wrong.
+  assert.equal(scoreBonusAnswer("Messi", q("text", "Messi"), false), 0);
+});
+
+test("text manual grading does not require closing the question", () => {
+  // correct_answer null (question not "closed") yet still graded true.
+  assert.equal(scoreBonusAnswer("Messi", q("text", null), true), 10);
+});
+
+// ---------------------------------------------------------------------------
+// scoreBonusAnswer — manualCorrect is ignored for non-text types
+// ---------------------------------------------------------------------------
+test("manualCorrect is ignored for single (auto-graded)", () => {
+  // manualCorrect=false must NOT override an auto-correct single answer.
+  assert.equal(scoreBonusAnswer("Brazil", q("single", "Brazil"), false), 10);
+  // manualCorrect=true must NOT rescue a wrong single answer.
+  assert.equal(scoreBonusAnswer("Spain", q("single", "Brazil"), true), 0);
+});
+
+test("manualCorrect is ignored for numeric and multi", () => {
+  assert.equal(scoreBonusAnswer(8, q("numeric", 8), false), 10);
   assert.equal(
-    scoreBonusAnswer(["Messi"] as unknown as string, q("text", "Messi")),
+    scoreBonusAnswer(["Brazil"], q("multi", ["France", "Brazil"]), true),
     0,
   );
+});
+
+test("non-text null correct_answer still → null regardless of manualCorrect", () => {
+  assert.equal(scoreBonusAnswer("Brazil", q("single", null), true), null);
+  assert.equal(scoreBonusAnswer(8, q("numeric", null), false), null);
 });
 
 // ---------------------------------------------------------------------------

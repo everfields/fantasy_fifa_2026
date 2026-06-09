@@ -12,6 +12,8 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 |---|------|-------|--------|---------|
 | [0001](0001-scoring-overhaul.md) | 2026-06-09 | Scoring system overhaul | Accepted (code merged, migration unapplied) | ×10 points, admin-assigned jokers, meta volante, group-winner bonuses, free-text bonus type |
 | [0002](0002-manual-results-no-live-data.md) | 2026-06-09 | Manual results — no live data provider | Accepted | Admin enters scores by hand + manual recalc; cron & external poller removed; provider/route kept dormant |
+| [0003](0003-luis-de-la-tracker.md) | 2026-06-10 | "Luis de la Tracker" — AI prediction-strategy tracker | Accepted | Daily cron → pure analysis → LLM (Anthropic SDK, persona del míster) → 5 key findings in `tracker_reports`; `/tracker` page + dashboard teaser; single daily `crons` re-added (Hobby-legal) |
+| [0004](0004-admin-tools-manual-text-grading.md) | 2026-06-10 | Admin tools — delete bonus, point adjustments, manual text grading | Accepted | Delete bonus questions from admin; `point_adjustments` table (± points with reason) folded into standings; `text` bonus graded per-answer by the admin (`bonus_answers.manual_correct`), no string matching; recalc now grades bonus answers (bug fix) |
 
 ## How to add a decision
 

@@ -136,7 +136,9 @@ export async function saveLocksAt(
 const jokerSchema = z
   .object({
     match_id: z.string().min(1),
-    is_joker: z.coerce.boolean(),
+    // NOT z.coerce.boolean(): Boolean("false") === true, which made it
+    // impossible to ever turn a joker OFF from the form.
+    is_joker: z.enum(["true", "false"]).transform((v) => v === "true"),
   })
   .strict();
 

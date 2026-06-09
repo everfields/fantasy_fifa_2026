@@ -14,6 +14,9 @@ db/
     0003_functions.sql   refresh_standings() aggregator + log_audit() helper
     0004_scoring_overhaul.sql  admin jokers, ~10x scoring, meta-volante (round_awards),
                                'text' bonus type, group matchday tagging, meta_points
+    0006_admin_tools.sql       manual text-bonus grading (bonus_answers.manual_correct +
+                               protect trigger), point_adjustments table + RLS,
+                               standings_cache.adjustment_points, refresh_standings() rollup
   seed/
     teams.csv            48 teams, groups A–L (PLACEHOLDER data — see warning below)
     matches.csv          72 group matches + 32 knockout placeholders (PLACEHOLDER)
@@ -26,7 +29,7 @@ db/
 Migrations are ordered and must be applied in sequence, then the seed:
 
 ```
-0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  seed/seed.sql
+0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql
 ```
 
 `0002` depends on tables from `0001`; `0003`'s `refresh_standings()` reads the
@@ -63,7 +66,8 @@ psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 \
   -f db/migrations/0001_schema.sql \
   -f db/migrations/0002_rls.sql \
   -f db/migrations/0003_functions.sql \
-  -f db/migrations/0004_scoring_overhaul.sql
+  -f db/migrations/0004_scoring_overhaul.sql \
+  -f db/migrations/0006_admin_tools.sql
 
 # Seed (run from repo root for the \copy relative paths):
 psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 -f db/seed/seed.sql
@@ -88,6 +92,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0001_schema.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0002_rls.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0003_functions.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0004_scoring_overhaul.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0006_admin_tools.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/seed/seed.sql   # run from repo root
 ```
 
@@ -167,6 +172,32 @@ The scoring-system overhaul. Mirrors the updated `lib/types.ts`:
 > Jokers are now **admin-assigned per match** (`matches.is_joker`), not
 > user-chosen. `predictions.is_joker` and `app_settings.jokers_per_user` are kept
 > for back-compat but ignored by scoring.
+
+### 0006_admin_tools.sql
+Admin operational tooling. Mirrors the updated `lib/types.ts`:
+- **`bonus_answers.manual_correct boolean`** (nullable, no default): the admin's
+  hand-grading verdict for `'text'`-type bonus answers. `null` = not yet graded.
+- **Protect trigger** `bonus_answers_protect_manual_correct` (BEFORE UPDATE):
+  players legitimately upsert their own `answer` while a question is open, but
+  must not set `manual_correct` or `points_awarded`. RLS is row-level (cannot pin
+  columns) and Supabase's blanket UPDATE grant makes column REVOKE brittle, so a
+  trigger forces both columns back to their OLD values for any caller that is
+  **not** the `service_role` and **not** an admin (`is_admin()`). The scoring
+  engine (service role / SECURITY DEFINER) is exempt and still writes them.
+- **`point_adjustments`** (new table, `PointAdjustment`): arbitrary admin point
+  adjustments for unforeseen events. `points` may be **negative** (no check);
+  `reason` is required and non-empty; `created_by` → admin profile (set null on
+  removal). **Public-read** to all authenticated members; writes only via service
+  role / `is_admin()` (same pattern as `round_awards`). Players cannot write.
+- **`standings_cache.adjustment_points integer not null default 0`**: per-user
+  sum of `point_adjustments.points` (may be negative).
+- **`refresh_standings()`** (`create or replace`): adds an `adj_agg` CTE summing
+  `point_adjustments.points`; `total_points` now also adds it and
+  `adjustment_points` is populated. Tie-breakers **unchanged**
+  (`total_points → exact_hits → bonus_points`). Still idempotent `MERGE`, still
+  **no scoring math**.
+- **Deleting a bonus question** needs no schema change: `bonus_answers.question_id`
+  already `on delete cascade` (from `0001`), so its answers drop automatically.
 
 ## Seed data — PLACEHOLDER WARNING
 

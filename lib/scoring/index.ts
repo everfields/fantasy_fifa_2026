@@ -133,19 +133,30 @@ export type BonusAnswerValue = string | string[] | number;
 /**
  * Score a bonus-question answer against its correct answer.
  *
- * Returns `null` when `question.correct_answer` is null (not yet graded).
- * Otherwise awards `question.points` on a correct answer, else 0.
+ * Returns `null` when nothing can be awarded yet (not graded), otherwise
+ * `question.points` on a correct answer, else 0.
  *
  * Per `BonusType`:
- *  - `"single"`  : string equality.
- *  - `"numeric"` : numeric equality (coerces string/number).
- *  - `"text"`    : case-insensitive, trimmed string equality. Both the answer
- *    and the correct answer are coerced to string, then `.trim().toLowerCase()`
- *    before comparison.
+ *  - `"single"`  : string equality. Null `correct_answer` → null.
+ *  - `"numeric"` : numeric equality (coerces string/number). Null
+ *    `correct_answer` → null.
  *  - `"multi"`   : ALL-OR-NOTHING set equality — full points only when the
  *    answer set equals the correct set exactly (order-independent, duplicates
- *    ignored). No partial credit is awarded. This keeps scoring simple and
- *    unambiguous; a partial-credit scheme can be layered on later if desired.
+ *    ignored). No partial credit is awarded. Null `correct_answer` → null.
+ *  - `"text"`    : MANUALLY graded. `correct_answer` is IGNORED entirely.
+ *    Grading is driven solely by the optional `manualCorrect` argument
+ *    (sourced from `BonusAnswer.manual_correct`):
+ *      - `null`/`undefined` → `null` (not yet graded — even if `correct_answer`
+ *        happens to be set; manual grading doesn't require closing the question).
+ *      - `true`             → `question.points`.
+ *      - `false`            → 0.
+ *
+ * DECISION — text questions are manually graded (no string matching):
+ * free-text answers are too varied for reliable automatic comparison (synonyms,
+ * spelling, partial names, phrasing). With a small player pool (~15–20), the
+ * admin simply validates each free-text answer by hand from the admin panel and
+ * stores the verdict in `bonus_answers.manual_correct`. The engine stays pure
+ * and deterministic by reading that stored verdict rather than guessing.
  *
  * DECISION — multi-type partial credit: the `"multi"` type is intentionally
  * all-or-nothing. A correct answer set must equal the expected set exactly;
@@ -153,13 +164,21 @@ export type BonusAnswerValue = string | string[] | number;
  * to keep the leaderboard math integer-only, deterministic, and easy to
  * explain to players, and to avoid ambiguity about how to weight partials.
  *
- * A malformed answer (wrong runtime shape for the question type, including
- * null/undefined for text) scores 0 rather than throwing.
+ * `manualCorrect` is IGNORED for all non-text types (they grade automatically).
+ *
+ * A malformed answer (wrong runtime shape for a non-text question type) scores
+ * 0 rather than throwing.
  */
 export function scoreBonusAnswer(
   answer: BonusAnswerValue,
   question: BonusQuestion,
+  manualCorrect?: boolean | null,
 ): number | null {
+  if (question.type === "text") {
+    if (manualCorrect === null || manualCorrect === undefined) return null;
+    return manualCorrect ? question.points : 0;
+  }
+
   if (question.correct_answer === null) return null;
 
   const correct = matchesBonus(answer, question.correct_answer, question.type);
@@ -182,14 +201,6 @@ function matchesBonus(
         return false;
       }
       return answer === correct;
-    }
-    case "text": {
-      if (answer === null || answer === undefined) return false;
-      if (correct === null || correct === undefined) return false;
-      if (Array.isArray(answer) || Array.isArray(correct)) return false;
-      const a = String(answer).trim().toLowerCase();
-      const c = String(correct).trim().toLowerCase();
-      return a === c;
     }
     case "multi": {
       if (!Array.isArray(answer) || !Array.isArray(correct)) return false;

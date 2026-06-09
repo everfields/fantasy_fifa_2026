@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/guards";
 import { createServiceClient } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/types";
+import type { PointAdjustment, Profile } from "@/lib/types";
 import { PageHeader } from "@/components/admin/PageHeader";
 import {
   UserManager,
@@ -15,15 +15,25 @@ export default async function AdminUsersPage() {
   const admin = await requireAdmin();
   const supabase = createServiceClient();
 
-  const [{ data: profiles }, settings] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("*")
-      .order("display_name", { ascending: true }),
-    getAppSettingsAdmin(),
-  ]);
+  const [{ data: profiles }, { data: adjustmentRows }, settings] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("*")
+        .order("display_name", { ascending: true }),
+      supabase
+        .from("point_adjustments")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      getAppSettingsAdmin(),
+    ]);
 
   const banned = new Set(settings.banned_user_ids);
+  const adjustmentsByUser: Record<string, PointAdjustment[]> = {};
+  for (const a of (adjustmentRows as PointAdjustment[] | null) ?? []) {
+    (adjustmentsByUser[a.user_id] ??= []).push(a);
+  }
+
   const users: AdminUserRow[] = ((profiles as Profile[] | null) ?? []).map(
     (p) => ({ ...p, banned: banned.has(p.id) }),
   );
@@ -33,9 +43,13 @@ export default async function AdminUsersPage() {
       <PageHeader
         eyebrow="Comunidad"
         title="Jugadores"
-        description="Concede o retira jokers, gestiona roles y banea jugadores. Cada acción queda registrada en la auditoría."
+        description="Concede o retira jokers, gestiona roles, banea jugadores y aplica ajustes de puntos. Cada acción queda registrada en la auditoría."
       />
-      <UserManager users={users} currentAdminId={admin.id} />
+      <UserManager
+        users={users}
+        adjustmentsByUser={adjustmentsByUser}
+        currentAdminId={admin.id}
+      />
     </div>
   );
 }

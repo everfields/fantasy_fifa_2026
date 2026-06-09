@@ -123,13 +123,16 @@ export function RecalcPreview() {
               </Badge>
             </CardTitle>
             <CardDescription>
-              {preview.changedCount === 0
+              {preview.changedCount === 0 && preview.bonusChangedCount === 0
                 ? "Todo está al día — aplicar no cambiaría nada."
-                : `Aplicar cambiará ${preview.changedCount} predicción(es).`}
+                : `Aplicar cambiará ${preview.changedCount} predicción(es)` +
+                  (preview.bonusChangedCount > 0
+                    ? ` y ${preview.bonusChangedCount} respuesta(s) bonus.`
+                    : ".")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Stat
                 label="Predicciones"
                 value={String(preview.totalPredictions)}
@@ -138,6 +141,11 @@ export function RecalcPreview() {
                 label="A cambiar"
                 value={String(preview.changedCount)}
                 tone={preview.changedCount > 0 ? "negative" : "default"}
+              />
+              <Stat
+                label="Bonus a cambiar"
+                value={String(preview.bonusChangedCount)}
+                tone={preview.bonusChangedCount > 0 ? "negative" : "default"}
               />
               <Stat
                 label="Δ puntos total"

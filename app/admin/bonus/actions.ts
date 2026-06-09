@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import type { BonusQuestion, Match, Team } from "@/lib/types";
+import type { BonusAnswer, BonusQuestion, Match, Team } from "@/lib/types";
 
 import { adminActor, getAppSettingsAdmin, writeAudit } from "../_lib";
 
@@ -312,5 +312,143 @@ export async function generateGroupWinnerQuestions(): Promise<BonusActionState> 
     message: `${toInsert.length} pregunta(s) de campeón de grupo creada(s)${
       skipped ? `, ${skipped} omitida(s)` : ""
     }.`,
+  };
+}
+
+const deleteSchema = z.object({ id: z.string().min(1) }).strict();
+
+/**
+ * Permanently delete a bonus question. Its `bonus_answers` rows cascade away via
+ * the FK, so any points already awarded for it disappear. We refresh standings
+ * afterwards so the leaderboard reflects the removal immediately, and audit the
+ * deletion (recording the question plus how many answers it took down with it).
+ */
+export async function deleteBonus(
+  _prev: BonusActionState,
+  form: FormData,
+): Promise<BonusActionState> {
+  const actor = await adminActor();
+
+  const parsed = deleteSchema.safeParse({ id: form.get("id") });
+  if (!parsed.success) return { ok: false, message: "Datos inválidos." };
+
+  const { id } = parsed.data;
+  const supabase = createServiceClient();
+
+  const before = await loadQuestion(id);
+  if (!before) return { ok: false, message: "Pregunta no encontrada." };
+
+  const { count: answerCount } = await supabase
+    .from("bonus_answers")
+    .select("id", { count: "exact", head: true })
+    .eq("question_id", id);
+
+  const { error } = await supabase.from("bonus_questions").delete().eq("id", id);
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "delete_bonus_question",
+    target_type: "bonus_question",
+    target_id: id,
+    before: { question: before, answer_count: answerCount ?? 0 },
+    after: null,
+  });
+
+  // Already-awarded points for this question must vanish from the leaderboard.
+  const { error: rpcError } = await supabase.rpc("refresh_standings");
+  if (rpcError) {
+    return {
+      ok: false,
+      message: `Pregunta borrada, pero falló refresh_standings: ${rpcError.message}`,
+    };
+  }
+
+  revalidatePath("/admin/bonus");
+  return {
+    ok: true,
+    message: `Pregunta eliminada (${answerCount ?? 0} respuesta(s) borradas).`,
+  };
+}
+
+const gradeTextSchema = z
+  .object({
+    answer_id: z.string().min(1),
+    // The hidden input submits the literal strings "true"/"false"; map them
+    // explicitly (z.coerce.boolean would treat "false" as truthy).
+    correct: z.enum(["true", "false"]).transform((v) => v === "true"),
+  })
+  .strict();
+
+/**
+ * Manually grade a single free-text (`text`) bonus answer. The admin marks the
+ * answer correct/incorrect; re-grading is allowed (overwrites the prior
+ * verdict). We store the verdict in `manual_correct` and set `points_awarded`
+ * accordingly (question.points / 0), audit before/after, and refresh standings.
+ * Only valid for questions of type `text` — the only manually-graded type.
+ */
+export async function gradeTextAnswer(
+  _prev: BonusActionState,
+  form: FormData,
+): Promise<BonusActionState> {
+  const actor = await adminActor();
+
+  const parsed = gradeTextSchema.safeParse({
+    answer_id: form.get("answer_id"),
+    correct: form.get("correct"),
+  });
+  if (!parsed.success) return { ok: false, message: "Datos inválidos." };
+
+  const { answer_id, correct } = parsed.data;
+  const supabase = createServiceClient();
+
+  const { data: answerRow } = await supabase
+    .from("bonus_answers")
+    .select("*")
+    .eq("id", answer_id)
+    .maybeSingle();
+  const answer = (answerRow as BonusAnswer | null) ?? null;
+  if (!answer) return { ok: false, message: "Respuesta no encontrada." };
+
+  const question = await loadQuestion(answer.question_id);
+  if (!question) return { ok: false, message: "Pregunta no encontrada." };
+  if (question.type !== "text") {
+    return {
+      ok: false,
+      message: "Solo las preguntas de texto libre se validan a mano.",
+    };
+  }
+
+  const points_awarded = correct ? question.points : 0;
+  const { error } = await supabase
+    .from("bonus_answers")
+    .update({ manual_correct: correct, points_awarded })
+    .eq("id", answer_id);
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "grade_text_answer",
+    target_type: "bonus_answer",
+    target_id: answer_id,
+    before: {
+      manual_correct: answer.manual_correct,
+      points_awarded: answer.points_awarded,
+    },
+    after: { manual_correct: correct, points_awarded },
+  });
+
+  const { error: rpcError } = await supabase.rpc("refresh_standings");
+  if (rpcError) {
+    return {
+      ok: false,
+      message: `Validación guardada, pero falló refresh_standings: ${rpcError.message}`,
+    };
+  }
+
+  revalidatePath("/admin/bonus");
+  return {
+    ok: true,
+    message: correct ? "Respuesta marcada como correcta." : "Respuesta marcada como incorrecta.",
   };
 }
