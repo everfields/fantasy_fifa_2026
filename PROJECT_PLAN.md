@@ -1,5 +1,11 @@
 # Mundial 2026 Pool — Project Plan
 
+> **📌 Baseline (v0) — frozen.** This document is the *original* product vision and the starting
+> point we evolve **from**. It is intentionally not kept up to date. Every significant change since
+> launch is recorded as a decision record in [`docs/decisions/`](docs/decisions/) — that log (plus
+> `CLAUDE.md` for the current operative rules) is the source of truth wherever it contradicts this
+> file. Do **not** rewrite this baseline to reflect new decisions; add an ADR instead.
+
 A fantasy/prediction pool web app for the FIFA World Cup 2026, built for a private group of ~15–20 friends. Users predict match outcomes, earn points (with jokers and bonus questions), and compete on a live-updating leaderboard. An admin dashboard controls scoring rules, jokers, results, and recalculation.
 
 ---
