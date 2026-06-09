@@ -1,0 +1,46 @@
+# Live-score poller (external trigger).
+#
+# Why this exists: the project runs on Vercel's Hobby plan, which only allows
+# ONE cron run per day. The native Vercel cron in vercel.json is therefore set
+# to "0 0 * * *" (daily, just to stay valid). This workflow does the real
+# frequent polling by hitting the same authenticated endpoint from GitHub.
+#
+# GitHub's scheduler only guarantees a ~5-minute minimum cadence (and can lag
+# under load), so each run loops internally to keep an effective ~2-minute
+# cadence. The endpoint is idempotent — a steady-state poll does no DB writes.
+#
+# Requires repo secret CRON_SECRET (must equal Vercel's CRON_SECRET env var).
+
+name: poll-results
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+concurrency:
+  group: poll-results
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Poll update-results every ~2 min for this 5-min window
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          URL: https://fantasyfifa2026.vercel.app/api/cron/update-results
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            code=$(curl -s -o /tmp/body -w "%{http_code}" \
+              -H "Authorization: Bearer ${CRON_SECRET}" "${URL}")
+            echo "poll #${i}: HTTP ${code}"
+            cat /tmp/body; echo
+            if [ "${code}" != "200" ]; then
+              echo "::error::poll #${i} returned ${code}"
+              exit 1
+            fi
+            if [ "${i}" -lt 3 ]; then sleep 120; fi
+          done

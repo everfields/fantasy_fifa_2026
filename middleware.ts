@@ -71,8 +71,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match everything except Next internals, static assets and image files.
+  // Match everything except API routes (which enforce their own auth — the
+  // cron via CRON_SECRET, admin routes via requireAdmin()), Next internals,
+  // static assets and image files. API routes MUST be excluded here, otherwise
+  // anonymous server-to-server calls (the cron) get 307-redirected to /login
+  // before their own auth runs.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
