@@ -25,6 +25,24 @@
 begin;
 
 -- ---------------------------------------------------------------------------
+-- DATA-SAFETY GUARD — refuses to seed if player data already exists.
+-- Re-seeding implies truncating matches, which FK-cascades and DELETES every
+-- prediction. See db/README.md "Data safety". To override DELIBERATELY
+-- (you have a fresh backup from db/backup.sh):
+--   PGOPTIONS="-c app.allow_reseed=on" psql "$DATABASE_URL" -f db/seed/seed.sql
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if (exists (select 1 from predictions) or exists (select 1 from bonus_answers))
+     and coalesce(current_setting('app.allow_reseed', true), '') <> 'on' then
+    raise exception using message =
+      'DATA-SAFETY: predictions/bonus_answers exist — seeding now risks destroying player data. '
+      'Backup first (bash db/backup.sh), then re-run with PGOPTIONS="-c app.allow_reseed=on". '
+      'See db/README.md "Data safety".';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Teams
 -- ---------------------------------------------------------------------------
 create temp table _teams_stage (

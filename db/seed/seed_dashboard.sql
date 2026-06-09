@@ -11,6 +11,22 @@
 
 begin;
 
+-- DATA-SAFETY GUARD — refuses to seed if player data already exists (re-seeding
+-- implies truncating matches, which FK-cascades and DELETES every prediction).
+-- See db/README.md "Data safety". To override DELIBERATELY (with a fresh backup
+-- from db/backup.sh), run first in the same session:
+--   set app.allow_reseed = 'on';
+do $$
+begin
+  if (exists (select 1 from predictions) or exists (select 1 from bonus_answers))
+     and coalesce(current_setting('app.allow_reseed', true), '') <> 'on' then
+    raise exception using message =
+      'DATA-SAFETY: predictions/bonus_answers exist — seeding now risks destroying player data. '
+      'Backup first (bash db/backup.sh), then set app.allow_reseed = ''on'' to override. '
+      'See db/README.md "Data safety".';
+  end if;
+end $$;
+
 insert into teams (name, code, "group", flag_url, is_eliminated) values
   ('Czechia', 'CZE', 'A', 'https://flagcdn.com/w320/cz.png', false),
   ('Mexico', 'MEX', 'A', 'https://flagcdn.com/w320/mx.png', false),

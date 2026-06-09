@@ -17,6 +17,13 @@ export type Stage =
 export type BonusType = "single" | "multi" | "numeric" | "text";
 
 /**
+ * Visual grouping of bonus questions, shown as three blocks in /bonus and
+ * /admin/bonus: group champions, first scorer in each Spain match, and
+ * tournament-wide questions (default).
+ */
+export type BonusCategory = "group_winner" | "spain_scorer" | "tournament";
+
+/**
  * Identity of a "round" for meta-volante (round-champion) scoring.
  * Group stage splits into one round per matchday; each knockout stage is its
  * own round. Derived from a match's stage + matchday — see lib/scoring.
@@ -76,6 +83,7 @@ export interface BonusQuestion {
   id: string;
   text: string;
   type: BonusType;
+  category: BonusCategory; // visual block in /bonus and /admin/bonus
   options: string[] | null; // for single/multi; null for numeric/text
   points: number;
   correct_answer: string | string[] | number | null; // text → NOT used for grading: free-text answers are validated per-player by the admin (BonusAnswer.manual_correct)

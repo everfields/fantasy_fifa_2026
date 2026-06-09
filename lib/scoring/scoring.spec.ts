@@ -203,6 +203,7 @@ const q = (
   id: "q1",
   text: "?",
   type,
+  category: "tournament",
   options: null,
   points,
   correct_answer: correct,

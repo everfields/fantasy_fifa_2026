@@ -200,9 +200,9 @@ export default async function DashboardPage() {
             desc="Campeón, pichichi y más puntos en juego."
           />
           <QuickLink
-            href="/chat"
-            title="Chat del grupo"
-            desc="Pique sano antes de cada jornada."
+            href="/tracker"
+            title="El parte de Luis"
+            desc="El análisis diario del míster."
           />
         </section>
       </div>

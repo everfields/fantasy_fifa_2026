@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useFormState } from "react-dom";
 
-import type { BonusQuestion, BonusType } from "@/lib/types";
+import type { BonusCategory, BonusQuestion, BonusType } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +53,20 @@ const TYPE_LABEL: Record<BonusType, string> = {
   text: "Texto libre",
 };
 
+/** The three visual blocks, in display order, with their section headings. */
+const CATEGORY_SECTIONS: { category: BonusCategory; label: string }[] = [
+  { category: "group_winner", label: "Campeón de grupo" },
+  { category: "spain_scorer", label: "Primer goleador — partidos de España" },
+  { category: "tournament", label: "Preguntas del torneo" },
+];
+
+/** Short labels for the "Bloque" select in the question form. */
+const CATEGORY_FORM_LABEL: Record<BonusCategory, string> = {
+  group_winner: "Campeón de grupo",
+  spain_scorer: "Primer goleador (España)",
+  tournament: "Preguntas del torneo",
+};
+
 function toLocalInput(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -93,26 +107,37 @@ export function BonusManager({
 
       <QuestionForm defaultPoints={bonusDefaultPoints} />
 
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-          Preguntas ({questions.length})
-        </h2>
-        {questions.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-zinc-500">
-              Aún no hay preguntas bonus.
-            </CardContent>
-          </Card>
-        ) : (
-          questions.map((q) => (
-            <QuestionCard
-              key={q.id}
-              q={q}
-              answers={answersByQuestion[q.id] ?? []}
-            />
-          ))
-        )}
-      </div>
+      {questions.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-zinc-500">
+            Aún no hay preguntas bonus.
+          </CardContent>
+        </Card>
+      ) : (
+        CATEGORY_SECTIONS.map(({ category, label }) => {
+          const inSection = questions
+            .filter((q) => q.category === category)
+            .sort(
+              (a, b) =>
+                new Date(a.locks_at).getTime() - new Date(b.locks_at).getTime(),
+            );
+          if (inSection.length === 0) return null;
+          return (
+            <div key={category} className="space-y-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                {label} ({inSection.length})
+              </h2>
+              {inSection.map((q) => (
+                <QuestionCard
+                  key={q.id}
+                  q={q}
+                  answers={answersByQuestion[q.id] ?? []}
+                />
+              ))}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
@@ -182,6 +207,26 @@ function QuestionForm({
               placeholder="¿Quién será el campeón del Mundial?"
               required
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={`category-${existing?.id ?? "new"}`}>Bloque</Label>
+            <select
+              id={`category-${existing?.id ?? "new"}`}
+              name="category"
+              defaultValue={existing?.category ?? "tournament"}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="group_winner">
+                {CATEGORY_FORM_LABEL.group_winner}
+              </option>
+              <option value="spain_scorer">
+                {CATEGORY_FORM_LABEL.spain_scorer}
+              </option>
+              <option value="tournament">
+                {CATEGORY_FORM_LABEL.tournament}
+              </option>
+            </select>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">

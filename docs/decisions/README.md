@@ -14,6 +14,9 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | [0002](0002-manual-results-no-live-data.md) | 2026-06-09 | Manual results — no live data provider | Accepted | Admin enters scores by hand + manual recalc; cron & external poller removed; provider/route kept dormant |
 | [0003](0003-luis-de-la-tracker.md) | 2026-06-10 | "Luis de la Tracker" — AI prediction-strategy tracker | Accepted | Daily cron → pure analysis → LLM (Anthropic SDK, persona del míster) → 5 key findings in `tracker_reports`; `/tracker` page + dashboard teaser; single daily `crons` re-added (Hobby-legal) |
 | [0004](0004-admin-tools-manual-text-grading.md) | 2026-06-10 | Admin tools — delete bonus, point adjustments, manual text grading | Accepted | Delete bonus questions from admin; `point_adjustments` table (± points with reason) folded into standings; `text` bonus graded per-answer by the admin (`bonus_answers.manual_correct`), no string matching; recalc now grades bonus answers (bug fix) |
+| [0005](0005-remove-chat.md) | 2026-06-10 | Remove the in-app chat | Accepted | `/chat` placeholder deleted — the group chats on WhatsApp; nav + dashboard link removed; no DB impact (`messages` table was never created) |
+| [0006](0006-bonus-categories.md) | 2026-06-10 | Bonus questions in 3 visual blocks | Accepted | `bonus_questions.category` (`group_winner`/`spain_scorer`/`tournament`); `/bonus` + `/admin/bonus` render 3 sections; migration 0007 seeds Spain first-scorer (×3), pichichi and Curazao questions idempotently |
+| [0007](0007-data-safety-guardrails.md) | 2026-06-10 | Data-safety guardrails — predictions can never be lost | Accepted | Seed files abort if player data exists; `db/backup.sh` one-command backup; additive-only migrations post-launch; never delete/truncate `matches`/`teams`/`bonus_questions` (FK cascades wipe predictions); rules in `db/README.md` "Data safety" |
 
 ## How to add a decision
 

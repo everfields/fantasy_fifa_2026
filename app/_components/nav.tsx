@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Gift,
   Home,
-  MessageCircle,
   Radar,
   Settings,
   Trophy,
@@ -21,8 +20,7 @@ const LINKS = [
   { href: "/matches", label: "Partidos", icon: CalendarDays },
   { href: "/standings", label: "Clasificación", shortLabel: "Tabla", icon: Trophy },
   { href: "/bonus", label: "Bonus", icon: Gift },
-  { href: "/tracker", label: "Tracker", icon: Radar },
-  { href: "/chat", label: "Chat", icon: MessageCircle },
+  { href: "/tracker", label: "AI Tracker", icon: Radar },
 ];
 
 export function Nav({
@@ -115,7 +113,7 @@ export function Nav({
         aria-label="Navegación principal"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
       >
-        <div className="grid h-16 grid-cols-6">
+        <div className="grid h-16 grid-cols-5">
           {LINKS.map((l) => {
             const active = isActive(l.href);
             const Icon = l.icon;

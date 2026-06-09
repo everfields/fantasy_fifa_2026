@@ -23,9 +23,10 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 4. **Never trust the client for locks.** Prediction freeze at `kickoff` is enforced server-side / via RLS (`now() < locks_at`).
 5. **Recalc is idempotent and MANUAL.** Admin previews impact ("affects X predictions") before executing; re-scoring never double-counts.
 6. **Path alias:** `@/*` maps to repo root.
+7. **Player data is sacred — never lose predictions.** `predictions`, `bonus_answers`, `point_adjustments`, `round_awards`, `profiles` must never be hit by `drop`/`truncate`/`delete` — directly or via FK cascade (deleting a `matches`/`teams`/`bonus_questions` row cascade-deletes predictions/answers: always `UPDATE` in place, never delete+reinsert). Migrations are **additive-only** post-launch; seeds self-abort if player data exists; **backup before any prod SQL** with `bash db/backup.sh`. Full guide: `db/README.md` → "Data safety" (ADR-0007).
 
 ## Directory map
-- `app/` — routes. `(auth)`, `dashboard`, `matches`, `standings`, `bonus`, `match/[id]`, `chat`, `tracker`, `admin/*`, `api/*` (incl. `api/cron/luis-tracker`)
+- `app/` — routes. `(auth)`, `dashboard`, `matches`, `standings`, `bonus`, `match/[id]`, `tracker`, `admin/*`, `api/*` (incl. `api/cron/luis-tracker`) — no chat (see `docs/decisions/0005-remove-chat.md`)
 - `lib/supabase` — browser (`client.ts`) + server (`server.ts`, incl. `createServiceClient` for cron/admin)
 - `lib/providers` — `FootballDataProvider` interface + impls
 - `lib/scoring` — pure scoring engine (reads `AppSettings`)
@@ -48,6 +49,8 @@ is graded **manually per answer by the admin** (`bonus_answers.manual_correct`, 
 `/admin/bonus`) — never by string comparison (see `docs/decisions/0004`). Questions can be deleted
 from the admin (cascade + audit + standings refresh). Group winner = auto-generated `single` bonus
 per group (admin button, 50 pts). The manual recalc grades predictions AND bonus answers.
+Questions carry a `category` (`group_winner | spain_scorer | tournament`) rendered as 3 visual
+blocks in `/bonus` and `/admin/bonus` (see `docs/decisions/0006-bonus-categories.md`).
 
 **Point adjustments:** arbitrary ± points per player for unforeseen events live in
 `point_adjustments` (reason required, admin-only writes, UI in `/admin/users`); summed into

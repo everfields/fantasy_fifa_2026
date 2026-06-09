@@ -4,6 +4,45 @@ Postgres (Supabase) schema, Row-Level Security, aggregation functions, and seed
 data for the FIFA World Cup 2026 prediction pool. The SQL mirrors `lib/types.ts`
 and PROJECT_PLAN.md sections 2, 3, 5 — keep them in sync.
 
+## ⛔ Data safety — predictions are sacred (READ FIRST)
+
+Player data lives in **`predictions`, `bonus_answers`, `point_adjustments`,
+`round_awards`, `profiles`**. These rows are irreplaceable — `points_awarded`
+can always be recomputed by the manual recalc, the rows themselves cannot.
+App code never deletes them; **the only way to lose them is SQL run against
+prod**. So the rules apply to anything under `db/` (see ADR-0007):
+
+1. **Backup before ANY prod SQL** — migration, seed, or manual statement:
+   ```bash
+   DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres" bash db/backup.sh
+   ```
+   Writes a full dump + a user-data dump to `db/backups/` (gitignored). Takes
+   seconds. No backup ⇒ no SQL.
+2. **Migrations are additive-only post-launch.** New tables, new nullable/
+   defaulted columns, `create or replace function` — yes. `drop table`,
+   `drop column`, `truncate`, or `delete` touching the tables above — never.
+   A rename = add new column + backfill; drop the old one after the tournament.
+3. **Never delete or truncate `matches`, `teams`, or `bonus_questions` after
+   launch.** `predictions.match_id` and `bonus_answers.question_id` are
+   `on delete cascade` — deleting a match **silently deletes every prediction
+   on it**. To fix a wrong match/kickoff/team, `UPDATE` the row in place
+   (UUID unchanged); never delete + reinsert. (Deleting a bonus question from
+   the admin is the one sanctioned cascade — it's audited and intentional.)
+4. **Never re-run seeds against prod after launch.** Both seed files now carry
+   a guard that **aborts if predictions exist**; the override
+   (`app.allow_reseed = 'on'`) is only for a deliberate, backed-up reset.
+5. **Test on local Supabase first** (`/run-porra dev`), then apply to prod with
+   `psql -v ON_ERROR_STOP=1`, one file at a time. Never paste untested SQL
+   into the dashboard editor against prod.
+6. **During the tournament, run `db/backup.sh` daily** (and always right before
+   entering results for a matchday). On the Supabase free plan there are no
+   automatic backups — this script is the safety net.
+
+**Restore:** full dump → `psql "$DATABASE_URL" -f db/backups/full_<UTC>.sql`
+into a fresh database. The `userdata_*.sql` dump restores user rows in place
+provided `matches`/`teams`/`bonus_questions` UUIDs are unchanged — which is
+exactly why rule 3 exists.
+
 ## Layout
 
 ```
@@ -17,6 +56,9 @@ db/
     0006_admin_tools.sql       manual text-bonus grading (bonus_answers.manual_correct +
                                protect trigger), point_adjustments table + RLS,
                                standings_cache.adjustment_points, refresh_standings() rollup
+    0007_bonus_categories.sql  bonus_questions.category (group_winner|spain_scorer|tournament),
+                               backfill group-winner rows, seed Spain-scorer + tournament questions
+                               (applied AFTER the seed; idempotent — re-run if applied before)
   seed/
     teams.csv            48 teams, groups A–L (PLACEHOLDER data — see warning below)
     matches.csv          72 group matches + 32 knockout placeholders (PLACEHOLDER)
@@ -29,8 +71,14 @@ db/
 Migrations are ordered and must be applied in sequence, then the seed:
 
 ```
-0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql
+0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql
 ```
+
+> **Note `0007` runs AFTER the seed.** It seeds Spain-scorer and tournament
+> bonus questions that read the `teams`/`matches` tables, so it must follow
+> `seed/seed.sql`. It is fully idempotent: if you accidentally run it before
+> seeding (empty tables) it inserts nothing and does not fail — just **re-run
+> `0007` after seeding** to materialise those questions.
 
 `0002` depends on tables from `0001`; `0003`'s `refresh_standings()` reads the
 schema from `0001`. `0004` alters `matches`/`standings_cache`, extends the
@@ -71,6 +119,9 @@ psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 \
 
 # Seed (run from repo root for the \copy relative paths):
 psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 -f db/seed/seed.sql
+
+# 0007 runs AFTER the seed (it reads teams/matches):
+psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 -f db/migrations/0007_bonus_categories.sql
 ```
 
 If you prefer the CLI migration workflow, copy the three migration files into
@@ -94,6 +145,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0003_functions.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0004_scoring_overhaul.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0006_admin_tools.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/seed/seed.sql   # run from repo root
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0007_bonus_categories.sql  # AFTER the seed
 ```
 
 > The new-user trigger (`on_auth_user_created` on `auth.users`) requires
@@ -199,6 +251,31 @@ Admin operational tooling. Mirrors the updated `lib/types.ts`:
 - **Deleting a bonus question** needs no schema change: `bonus_answers.question_id`
   already `on delete cascade` (from `0001`), so its answers drop automatically.
 
+### 0007_bonus_categories.sql
+Bonus-question categorisation + Spain/tournament seeds. Mirrors the updated
+`lib/types.ts` (`BonusCategory = 'group_winner' | 'spain_scorer' | 'tournament'`,
+`BonusQuestion.category`):
+- **`bonus_questions.category text not null default 'tournament'`** with a named
+  CHECK constraint `bonus_questions_category_check` (`group_winner | spain_scorer
+  | tournament`). The constraint is added behind `drop constraint if exists` so
+  the file is fully re-runnable.
+- **Backfill**: existing auto-generated group-winner rows (text marker
+  `¿Campeón del Grupo X?`) are re-tagged to `group_winner`.
+- **Spain-scorer seed**: one `text`-type question
+  `Primer goleador de España vs {rival}` per Spain (`code = 'ESP'`) **group**
+  match, rival looked up dynamically from `teams` (no hardcoded dates/opponents).
+  `points = bonus_default_points` (fallback 100), `locks_at = match.kickoff_at`,
+  `category = 'spain_scorer'`. Expected 3 (vs Cape Verde, Saudi Arabia, Uruguay)
+  but generic over whatever ESP group matches exist.
+- **Tournament seed**: `Pichichi del Mundial (máximo goleador)` (`text`) and
+  `¿Cuántos goles encajará Curazao en el Mundial?` (`single`, options
+  `["10 o más goles","Menos de 10 goles"]`), both `category = 'tournament'`,
+  `points = bonus_default_points`, `locks_at = min(kickoff_at)` across all matches.
+- **Idempotent + seed-order-safe**: every insert is guarded by `where not exists`
+  on the question text and null/`exists` checks on `teams`/`matches`. Runs AFTER
+  `seed/seed.sql`; if applied against empty tables it inserts nothing and does not
+  fail — **re-run after seeding** to materialise the Spain/tournament questions.
+
 ## Seed data — PLACEHOLDER WARNING
 
 `teams.csv` and `matches.csv` are **structurally correct placeholders**:
@@ -217,4 +294,6 @@ fixture before launch.** Tournament window used: 2026-06-11 … 2026-07-19.
 
 `seed.sql` upserts teams by `code`. Group matches are inserted fresh, so to
 re-seed cleanly run `truncate matches cascade; truncate teams cascade;` first
-(this also clears predictions — only do it pre-launch / in dev).
+(this also clears predictions — **only pre-launch / in dev**). Both seed files
+abort if `predictions`/`bonus_answers` contain rows; see the **Data safety**
+section at the top for the rules and the deliberate override.

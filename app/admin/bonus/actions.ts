@@ -28,6 +28,9 @@ const upsertSchema = z
     id: z.string().optional(),
     text: z.string().min(3, "Texto demasiado corto").max(500),
     type: z.enum(["single", "multi", "numeric", "text"]),
+    category: z
+      .enum(["group_winner", "spain_scorer", "tournament"])
+      .default("tournament"),
     points: z.coerce.number().int().min(0).max(100_000),
     locks_at: z
       .string()
@@ -57,6 +60,7 @@ export async function upsertBonus(
     id: (form.get("id") as string) || undefined,
     text: form.get("text"),
     type: form.get("type"),
+    category: (form.get("category") as string) || undefined,
     points: form.get("points"),
     locks_at: form.get("locks_at"),
   });
@@ -67,7 +71,7 @@ export async function upsertBonus(
     };
   }
 
-  const { id, text, type, points, locks_at } = parsed.data;
+  const { id, text, type, category, points, locks_at } = parsed.data;
   // single/multi carry options; numeric/text have none.
   const options =
     type === "numeric" || type === "text"
@@ -83,7 +87,7 @@ export async function upsertBonus(
 
   if (id) {
     const before = await loadQuestion(id);
-    const payload = { text, type, points, options, locks_at: iso };
+    const payload = { text, type, category, points, options, locks_at: iso };
     const { error } = await supabase
       .from("bonus_questions")
       .update(payload)
@@ -105,6 +109,7 @@ export async function upsertBonus(
   const payload = {
     text,
     type,
+    category,
     points,
     options,
     correct_answer: null,
@@ -251,6 +256,7 @@ export async function generateGroupWinnerQuestions(): Promise<BonusActionState> 
   const toInsert: {
     text: string;
     type: "single";
+    category: "group_winner";
     points: number;
     options: string[];
     correct_answer: null;
@@ -273,6 +279,7 @@ export async function generateGroupWinnerQuestions(): Promise<BonusActionState> 
     toInsert.push({
       text,
       type: "single",
+      category: "group_winner",
       points: settings.group_winner_points,
       options,
       correct_answer: null,
