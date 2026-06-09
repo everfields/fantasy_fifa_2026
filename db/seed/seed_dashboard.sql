@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Mundial 2026 Pool - Seed (dashboard / SQL Editor version, no \copy)
--- Run AFTER 0001_schema, 0002_rls, 0003_functions.
+-- Run AFTER 0001_schema, 0002_rls, 0003_functions, 0004_scoring_overhaul.
 -- OFFICIAL FIFA World Cup 2026 draw (5 Dec 2025) + real fixture.
 --   Source: football-pool WP plugin fixture CSV, cross-checked vs FIFA/MLS/NBC.
 --   Tournament window: 2026-06-11 .. 2026-07-19. Knockout teams are TBD (null).
@@ -171,6 +171,24 @@ from (values
 ) as v(home_code, away_code, stage, grp, kickoff)
 left join teams t1 on t1.code = v.home_code
 left join teams t2 on t2.code = v.away_code;
+
+-- Tag group-stage matchdays (1/2/3). Each group A-L has 6 matches = 3 matchdays
+-- of 2 matches; ordering each group by kickoff_at, the chronological pairs map
+-- to matchdays 1,2,3. Knockouts keep matchday null. (Mirrors migration 0004.)
+with ordered as (
+  select
+    id,
+    ((row_number() over (
+       partition by "group" order by kickoff_at, id
+     ) - 1) / 2) + 1 as md
+  from matches
+  where stage = 'group' and "group" is not null
+)
+update matches m
+   set matchday = o.md
+  from ordered o
+ where m.id = o.id
+   and (m.matchday is distinct from o.md);
 
 commit;
 

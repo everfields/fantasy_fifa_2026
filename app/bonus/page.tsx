@@ -20,6 +20,7 @@ const TYPE_LABEL: Record<BonusQuestion["type"], string> = {
   single: "Una opción",
   multi: "Varias opciones",
   numeric: "Numérica",
+  text: "Texto libre",
 };
 
 export default async function BonusPage() {

@@ -22,6 +22,12 @@ export async function getAppSettings(): Promise<AppSettings> {
   const s = (data?.settings ?? {}) as Partial<AppSettings>;
   return {
     scoring: { ...DEFAULT_APP_SETTINGS.scoring, ...(s.scoring ?? {}) },
+    bonus_default_points:
+      s.bonus_default_points ?? DEFAULT_APP_SETTINGS.bonus_default_points,
+    group_winner_points:
+      s.group_winner_points ?? DEFAULT_APP_SETTINGS.group_winner_points,
+    meta_volante_points:
+      s.meta_volante_points ?? DEFAULT_APP_SETTINGS.meta_volante_points,
     jokers_per_user: s.jokers_per_user ?? DEFAULT_APP_SETTINGS.jokers_per_user,
     pot_amount: s.pot_amount ?? DEFAULT_APP_SETTINGS.pot_amount,
     season_locked: s.season_locked ?? DEFAULT_APP_SETTINGS.season_locked,

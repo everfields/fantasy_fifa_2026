@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import type { BonusQuestion } from "@/lib/types";
+import type { BonusQuestion, Match, Team } from "@/lib/types";
 
-import { adminActor, writeAudit } from "../_lib";
+import { adminActor, getAppSettingsAdmin, writeAudit } from "../_lib";
+
+/** Marker embedded in auto-generated group-winner questions for idempotency. */
+const GROUP_WINNER_PREFIX = "¿Campeón del Grupo";
 
 export type BonusActionState = { ok: boolean; message: string };
 
@@ -24,8 +27,8 @@ const upsertSchema = z
   .object({
     id: z.string().optional(),
     text: z.string().min(3, "Texto demasiado corto").max(500),
-    type: z.enum(["single", "multi", "numeric"]),
-    points: z.coerce.number().int().min(0).max(1000),
+    type: z.enum(["single", "multi", "numeric", "text"]),
+    points: z.coerce.number().int().min(0).max(100_000),
     locks_at: z
       .string()
       .min(1)
@@ -65,7 +68,11 @@ export async function upsertBonus(
   }
 
   const { id, text, type, points, locks_at } = parsed.data;
-  const options = type === "numeric" ? null : parseOptions(form.get("options"));
+  // single/multi carry options; numeric/text have none.
+  const options =
+    type === "numeric" || type === "text"
+      ? null
+      : parseOptions(form.get("options"));
 
   if ((type === "single" || type === "multi") && !options) {
     return { ok: false, message: "Las preguntas de opción requieren opciones." };
@@ -124,7 +131,7 @@ export async function upsertBonus(
 const closeSchema = z
   .object({
     id: z.string().min(1),
-    type: z.enum(["single", "multi", "numeric"]),
+    type: z.enum(["single", "multi", "numeric", "text"]),
   })
   .passthrough();
 
@@ -185,5 +192,125 @@ export async function closeBonus(
   return {
     ok: true,
     message: "Respuesta correcta guardada. Ejecuta «Recalcular» para repartir los puntos.",
+  };
+}
+
+/**
+ * Auto-generate one "¿Campeón del Grupo X?" bonus question per group (A–L).
+ *
+ * For each group it creates a `single` question whose options are that group's
+ * team names, `points` = settings.group_winner_points, `locks_at` = the earliest
+ * kickoff among that group's matches, and `correct_answer` = null (graded later
+ * by closing it). Idempotent-ish: groups that ALREADY have a generated question
+ * (detected by the "¿Campeón del Grupo X?" text marker) are skipped, so re-running
+ * does not duplicate. The whole batch is audit-logged once.
+ */
+export async function generateGroupWinnerQuestions(): Promise<BonusActionState> {
+  const actor = await adminActor();
+  const supabase = createServiceClient();
+  const settings = await getAppSettingsAdmin();
+
+  const [{ data: teamRows }, { data: matchRows }, { data: existingRows }] =
+    await Promise.all([
+      supabase.from("teams").select("*"),
+      supabase.from("matches").select("*"),
+      supabase
+        .from("bonus_questions")
+        .select("text")
+        .ilike("text", `${GROUP_WINNER_PREFIX}%`),
+    ]);
+
+  const teams = (teamRows as Team[] | null) ?? [];
+  const matches = (matchRows as Match[] | null) ?? [];
+  const existing = (existingRows as { text: string }[] | null) ?? [];
+  const existingTexts = new Set(existing.map((r) => r.text));
+
+  // Bucket teams + earliest kickoff by group label (A..L).
+  const teamsByGroup = new Map<string, string[]>();
+  for (const t of teams) {
+    if (!t.group) continue;
+    const arr = teamsByGroup.get(t.group) ?? [];
+    arr.push(t.name);
+    teamsByGroup.set(t.group, arr);
+  }
+
+  const earliestKickoffByGroup = new Map<string, string>();
+  for (const m of matches) {
+    if (!m.group) continue;
+    const prev = earliestKickoffByGroup.get(m.group);
+    if (!prev || new Date(m.kickoff_at) < new Date(prev)) {
+      earliestKickoffByGroup.set(m.group, m.kickoff_at);
+    }
+  }
+
+  const groups = Array.from(teamsByGroup.keys()).sort();
+  if (groups.length === 0) {
+    return { ok: false, message: "No hay grupos con equipos cargados." };
+  }
+
+  const toInsert: {
+    text: string;
+    type: "single";
+    points: number;
+    options: string[];
+    correct_answer: null;
+    locks_at: string;
+  }[] = [];
+  let skipped = 0;
+
+  for (const g of groups) {
+    const text = `${GROUP_WINNER_PREFIX} ${g}?`;
+    if (existingTexts.has(text)) {
+      skipped++;
+      continue;
+    }
+    const options = (teamsByGroup.get(g) ?? []).slice().sort();
+    const kickoff = earliestKickoffByGroup.get(g);
+    if (options.length === 0 || !kickoff) {
+      skipped++;
+      continue;
+    }
+    toInsert.push({
+      text,
+      type: "single",
+      points: settings.group_winner_points,
+      options,
+      correct_answer: null,
+      locks_at: new Date(kickoff).toISOString(),
+    });
+  }
+
+  if (toInsert.length === 0) {
+    return {
+      ok: true,
+      message: `Nada que generar: ${skipped} grupo(s) ya tenían su pregunta.`,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("bonus_questions")
+    .insert(toInsert)
+    .select("id, text");
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "generate_group_winner_questions",
+    target_type: "bonus_question",
+    target_id: null,
+    after: {
+      created: data?.length ?? toInsert.length,
+      skipped,
+      points: settings.group_winner_points,
+      groups: toInsert.map((q) => q.text),
+    },
+  });
+
+  revalidatePath("/admin/bonus");
+  return {
+    ok: true,
+    message: `${toInsert.length} pregunta(s) de campeón de grupo creada(s)${
+      skipped ? `, ${skipped} omitida(s)` : ""
+    }.`,
   };
 }

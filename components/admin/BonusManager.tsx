@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useFormState } from "react-dom";
 
 import type { BonusQuestion, BonusType } from "@/lib/types";
@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SubmitButton } from "./SubmitButton";
 import {
   closeBonus,
+  generateGroupWinnerQuestions,
   upsertBonus,
   type BonusActionState,
 } from "@/app/admin/bonus/actions";
@@ -38,6 +39,7 @@ const TYPE_LABEL: Record<BonusType, string> = {
   single: "Opción única",
   multi: "Opción múltiple",
   numeric: "Numérica",
+  text: "Texto libre",
 };
 
 function toLocalInput(iso: string): string {
@@ -63,10 +65,20 @@ function Msg({ state }: { state: BonusActionState }) {
   );
 }
 
-export function BonusManager({ questions }: { questions: BonusQuestion[] }) {
+export function BonusManager({
+  questions,
+  bonusDefaultPoints,
+  groupWinnerPoints,
+}: {
+  questions: BonusQuestion[];
+  bonusDefaultPoints: number;
+  groupWinnerPoints: number;
+}) {
   return (
     <div className="space-y-6">
-      <QuestionForm />
+      <GroupWinnerGenerator points={groupWinnerPoints} />
+
+      <QuestionForm defaultPoints={bonusDefaultPoints} />
 
       <div className="space-y-3">
         <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
@@ -86,7 +98,45 @@ export function BonusManager({ questions }: { questions: BonusQuestion[] }) {
   );
 }
 
-function QuestionForm({ existing }: { existing?: BonusQuestion }) {
+function GroupWinnerGenerator({ points }: { points: number }) {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<BonusActionState | null>(null);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Campeón de grupo (auto)</CardTitle>
+        <CardDescription>
+          Genera una pregunta de opción única por grupo (A–L) con los equipos del
+          grupo como opciones, {points} pts cada una y bloqueo en el primer
+          partido del grupo. Omite los grupos que ya tengan su pregunta.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              setResult(await generateGroupWinnerQuestions());
+            })
+          }
+        >
+          {pending ? "Generando…" : "Generar preguntas de grupo"}
+        </Button>
+        {result ? <Msg state={result} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuestionForm({
+  existing,
+  defaultPoints,
+}: {
+  existing?: BonusQuestion;
+  defaultPoints?: number;
+}) {
   const [state, action] = useFormState(upsertBonus, initial);
   const [type, setType] = useState<BonusType>(existing?.type ?? "single");
 
@@ -128,6 +178,7 @@ function QuestionForm({ existing }: { existing?: BonusQuestion }) {
                 <option value="single">Opción única</option>
                 <option value="multi">Opción múltiple</option>
                 <option value="numeric">Numérica</option>
+                <option value="text">Texto libre</option>
               </select>
             </div>
             <div className="space-y-1.5">
@@ -137,7 +188,7 @@ function QuestionForm({ existing }: { existing?: BonusQuestion }) {
                 name="points"
                 type="number"
                 min={0}
-                defaultValue={existing?.points ?? 10}
+                defaultValue={existing?.points ?? defaultPoints ?? 10}
               />
             </div>
             <div className="space-y-1.5">
@@ -154,7 +205,7 @@ function QuestionForm({ existing }: { existing?: BonusQuestion }) {
             </div>
           </div>
 
-          {type !== "numeric" ? (
+          {type === "single" || type === "multi" ? (
             <div className="space-y-1.5">
               <Label htmlFor={`options-${existing?.id ?? "new"}`}>
                 Opciones (una por línea o separadas por comas)
@@ -272,6 +323,23 @@ function CloseQuestionDialog({ q }: { q: BonusQuestion }) {
                 }
                 required
               />
+            </div>
+          ) : q.type === "text" ? (
+            <div className="space-y-1.5">
+              <Label htmlFor={`ca-${q.id}`}>Respuesta correcta (texto)</Label>
+              <Input
+                id={`ca-${q.id}`}
+                name="correct_answer"
+                type="text"
+                defaultValue={
+                  typeof q.correct_answer === "string" ? q.correct_answer : ""
+                }
+                placeholder="Se compara sin distinguir mayúsculas ni espacios"
+                required
+              />
+              <p className="text-xs text-zinc-400">
+                La comparación ignora mayúsculas/minúsculas y espacios sobrantes.
+              </p>
             </div>
           ) : q.type === "single" ? (
             <div className="space-y-1.5">

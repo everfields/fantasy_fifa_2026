@@ -125,14 +125,15 @@ export function ScoringForm({ settings }: { settings: AppSettings }) {
         <CardHeader>
           <CardTitle>Jokers</CardTitle>
           <CardDescription>
-            Comodines para multiplicar la puntuación de un partido elegido.
+            Los jokers se asignan POR PARTIDO desde «Gestión de partidos»; este
+            multiplicador se aplica a los partidos designados por el admin.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
           <Field
             id="joker_multiplier"
             label="Multiplicador del joker"
-            hint="Factor aplicado (p. ej. 2 = doble)."
+            hint="Factor aplicado a los partidos joker designados por el admin (p. ej. 3 = triple)."
             error={err.joker_multiplier}
           >
             <Input
@@ -146,8 +147,8 @@ export function ScoringForm({ settings }: { settings: AppSettings }) {
           </Field>
           <Field
             id="jokers_per_user"
-            label="Jokers por jugador"
-            hint="Cantidad inicial de comodines disponibles."
+            label="Jokers por jugador (obsoleto)"
+            hint="DEPRECADO: los jokers ya no son por jugador, se asignan por partido. Se conserva por compatibilidad."
             error={err.jokers_per_user}
           >
             <Input
@@ -156,6 +157,62 @@ export function ScoringForm({ settings }: { settings: AppSettings }) {
               type="number"
               min={0}
               defaultValue={settings.jokers_per_user}
+              disabled
+              className="opacity-60"
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Puntos por defecto</CardTitle>
+          <CardDescription>
+            Valores usados al crear preguntas bonus, en las preguntas de campeón
+            de grupo y en los premios «meta volante» (campeón de ronda).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5 sm:grid-cols-3">
+          <Field
+            id="bonus_default_points"
+            label="Puntos bonus por defecto"
+            hint="Puntos sugeridos al crear una nueva pregunta bonus."
+            error={err.bonus_default_points}
+          >
+            <Input
+              id="bonus_default_points"
+              name="bonus_default_points"
+              type="number"
+              min={0}
+              defaultValue={settings.bonus_default_points}
+            />
+          </Field>
+          <Field
+            id="group_winner_points"
+            label="Puntos campeón de grupo"
+            hint="Puntos por cada pregunta auto-generada de campeón de grupo."
+            error={err.group_winner_points}
+          >
+            <Input
+              id="group_winner_points"
+              name="group_winner_points"
+              type="number"
+              min={0}
+              defaultValue={settings.group_winner_points}
+            />
+          </Field>
+          <Field
+            id="meta_volante_points"
+            label="Puntos meta volante"
+            hint="Premio al campeón de cada ronda (mejor puntuación de la ronda)."
+            error={err.meta_volante_points}
+          >
+            <Input
+              id="meta_volante_points"
+              name="meta_volante_points"
+              type="number"
+              min={0}
+              defaultValue={settings.meta_volante_points}
             />
           </Field>
         </CardContent>

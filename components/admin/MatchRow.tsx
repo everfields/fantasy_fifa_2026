@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 
 import { SubmitButton } from "./SubmitButton";
 import {
+  saveJoker,
   saveLocksAt,
   saveResult,
   syncNow,
@@ -80,7 +81,12 @@ export function MatchRow({
         {score(match)}
       </td>
       <td className="py-3 pr-3">
-        <Badge variant={meta.variant}>{meta.label}</Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={meta.variant}>{meta.label}</Badge>
+          {match.is_joker ? (
+            <Badge className="bg-amber-500 hover:bg-amber-500">★ Joker</Badge>
+          ) : null}
+        </div>
       </td>
       <td className="py-3 text-right">
         <EditDialog match={match} home={home} away={away} />
@@ -100,6 +106,7 @@ function EditDialog({
 }) {
   const [resState, resAction] = useFormState(saveResult, initial);
   const [lockState, lockAction] = useFormState(saveLocksAt, initial);
+  const [jokerState, jokerAction] = useFormState(saveJoker, initial);
   const [syncState, syncAction] = useFormState(syncNow, initial);
 
   return (
@@ -183,6 +190,34 @@ function EditDialog({
             </SubmitButton>
           </div>
           {lockState.message ? <Message state={lockState} /> : null}
+        </form>
+
+        {/* Joker toggle */}
+        <form action={jokerAction} className="space-y-3 border-b border-zinc-100 pb-5">
+          <input type="hidden" name="match_id" value={match.id} />
+          {/* Post the TARGET state: when currently joker, the button removes it. */}
+          <input type="hidden" name="is_joker" value={match.is_joker ? "false" : "true"} />
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-zinc-900">
+                Partido joker{" "}
+                {match.is_joker ? (
+                  <Badge className="ml-1 bg-amber-500 hover:bg-amber-500">★ Activo</Badge>
+                ) : null}
+              </p>
+              <p className="text-xs text-zinc-500">
+                Multiplica los puntos de TODOS los jugadores en este partido por el
+                multiplicador de joker.
+              </p>
+            </div>
+            <SubmitButton
+              size="sm"
+              variant={match.is_joker ? "outline" : "secondary"}
+            >
+              {match.is_joker ? "Quitar joker" : "Marcar joker"}
+            </SubmitButton>
+          </div>
+          {jokerState.message ? <Message state={jokerState} /> : null}
         </form>
 
         {/* Sync now */}

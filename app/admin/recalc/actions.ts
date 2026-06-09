@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { createServiceClient } from "@/lib/supabase/server";
@@ -25,13 +26,23 @@ export interface RecalcPreview {
   changedCount: number;
   totalDelta: number; // sum of (new - old) over changed rows
   changes: RecalcChange[]; // capped sample for display
+  // Number of "meta volante" (round-champion) awards that would change. The
+  // actual computation/persistence is owned by the /api/admin/recalc endpoint
+  // (api agent); we surface its count here. `null` = the endpoint did not (yet)
+  // report it, so the UI shows "pendiente" rather than a misleading 0.
+  roundAwardsAffected: number | null;
   generatedAt: string;
 }
 
 export type RecalcState =
   | { phase: "idle"; message?: string }
   | { phase: "preview"; preview: RecalcPreview; message?: string }
-  | { phase: "done"; applied: number; message: string }
+  | {
+      phase: "done";
+      applied: number;
+      roundAwardsAffected: number | null;
+      message: string;
+    }
   | { phase: "error"; message: string };
 
 /**
@@ -60,6 +71,7 @@ async function computeChanges(): Promise<{
       home_score: m.home_score,
       away_score: m.away_score,
       status: m.status,
+      is_joker: m.is_joker,
     });
   }
 
@@ -95,6 +107,44 @@ async function computeChanges(): Promise<{
   return { changes, total: predictions.length };
 }
 
+/**
+ * Ask the /api/admin/recalc endpoint (owned by the api agent) how many meta
+ * volante (round-champion) awards a recalc would touch. The endpoint owns the
+ * round-award computation; we only surface its count. Tolerant of the response
+ * shape: returns `null` (→ "pendiente" in the UI) when the endpoint does not
+ * report a round-award count or is unreachable, so we never show a misleading 0.
+ */
+async function fetchRoundAwardsAffected(
+  mode: "preview" | "execute",
+): Promise<number | null> {
+  const h = headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const cookie = h.get("cookie") ?? "";
+  const base = host ? `${proto}://${host}` : "";
+  if (!base) return null;
+
+  try {
+    const res = await fetch(`${base}/api/admin/recalc`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({ mode }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as Record<string, unknown>;
+    // Accept any of the field names the endpoint might settle on.
+    const candidate =
+      body.roundAwardsAffected ??
+      body.roundAwardsChanged ??
+      body.roundAwardsGranted ??
+      body.metaAwardsAffected;
+    return typeof candidate === "number" ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Build a non-destructive preview of what a recalc would change. */
 export async function previewRecalc(): Promise<RecalcState> {
   // Outside try/catch: a non-admin triggers a redirect (a thrown control-flow
@@ -102,6 +152,7 @@ export async function previewRecalc(): Promise<RecalcState> {
   await adminActor();
   try {
     const { changes, total } = await computeChanges();
+    const roundAwardsAffected = await fetchRoundAwardsAffected("preview");
 
     const totalDelta = changes.reduce((acc, c) => acc + c.delta, 0);
     return {
@@ -111,6 +162,7 @@ export async function previewRecalc(): Promise<RecalcState> {
         changedCount: changes.length,
         totalDelta,
         changes: changes.slice(0, 100),
+        roundAwardsAffected,
         generatedAt: new Date().toISOString(),
       },
     };
@@ -146,7 +198,12 @@ export async function confirmRecalc(): Promise<RecalcState> {
       }
     }
 
-    // Refresh the standings cache (aggregates the just-written points).
+    // Grant/refresh meta volante (round-champion) awards via the api-agent's
+    // endpoint, which owns that computation. Idempotent on its side; it also
+    // refreshes standings. Returns the number of awards touched (or null).
+    const roundAwardsAffected = await fetchRoundAwardsAffected("execute");
+
+    // Refresh the standings cache (aggregates the just-written points + awards).
     const { error: rpcError } = await supabase.rpc("refresh_standings");
     if (rpcError) {
       return {
@@ -164,19 +221,27 @@ export async function confirmRecalc(): Promise<RecalcState> {
       after: {
         applied: changes.length,
         total_delta: changes.reduce((a, c) => a + c.delta, 0),
+        round_awards_affected: roundAwardsAffected,
       },
     });
 
     revalidatePath("/admin/recalc");
     revalidatePath("/admin");
 
+    const awardsNote =
+      roundAwardsAffected && roundAwardsAffected > 0
+        ? ` Premios meta volante actualizados: ${roundAwardsAffected}.`
+        : "";
+
     return {
       phase: "done",
       applied: changes.length,
+      roundAwardsAffected,
       message:
-        changes.length === 0
+        (changes.length === 0
           ? "Nada que recalcular: las puntuaciones ya estaban al día."
-          : `Recalculo aplicado: ${changes.length} predicción(es) actualizadas y clasificación refrescada.`,
+          : `Recalculo aplicado: ${changes.length} predicción(es) actualizadas y clasificación refrescada.`) +
+        awardsNote,
     };
   } catch (e) {
     return {

@@ -44,6 +44,21 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+function MetaPointsBadge({ points }: { points: number }) {
+  if (points <= 0) return null;
+  return (
+    <span
+      title={`${points} meta-volante pts`}
+      className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-amber-700 dark:text-amber-300"
+    >
+      <span role="img" aria-label="meta">
+        ★
+      </span>
+      {points}
+    </span>
+  );
+}
+
 export function RankingTable({
   rows,
   currentUserId,
@@ -80,6 +95,11 @@ export function RankingTable({
             <TableHead className="hidden text-right sm:table-cell">
               Bonus
             </TableHead>
+            <TableHead className="hidden text-right md:table-cell">
+              <span title="Meta-volante round awards" className="cursor-help">
+                ★ Meta
+              </span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -107,8 +127,10 @@ export function RankingTable({
                         {initials(row.display_name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="flex items-center gap-2 font-medium">
-                      <span className="truncate">{row.display_name}</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium">
+                        {row.display_name}
+                      </span>
                       {isCurrent && (
                         <Badge
                           variant="success"
@@ -117,7 +139,13 @@ export function RankingTable({
                           You
                         </Badge>
                       )}
-                    </span>
+                      {/* On small screens, show meta_points inline next to the name */}
+                      {row.meta_points > 0 && (
+                        <span className="md:hidden">
+                          <MetaPointsBadge points={row.meta_points} />
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-right text-base font-bold tabular-nums">
@@ -128,6 +156,9 @@ export function RankingTable({
                 </TableCell>
                 <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
                   {row.bonus_points}
+                </TableCell>
+                <TableCell className="hidden text-right md:table-cell">
+                  <MetaPointsBadge points={row.meta_points} />
                 </TableCell>
               </TableRow>
             );

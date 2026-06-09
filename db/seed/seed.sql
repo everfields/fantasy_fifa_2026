@@ -73,6 +73,24 @@ from _matches_stage s
 left join teams ht on ht.code = nullif(s.home_code, '')
 left join teams at on at.code = nullif(s.away_code, '');
 
+-- Tag group-stage matchdays (1/2/3). Each group A–L has 6 matches = 3 matchdays
+-- of 2 matches; ordering each group by kickoff_at, the chronological pairs map
+-- to matchdays 1,2,3. Knockouts keep matchday null. (Mirrors migration 0004.)
+with ordered as (
+  select
+    id,
+    ((row_number() over (
+       partition by "group" order by kickoff_at, id
+     ) - 1) / 2) + 1 as md
+  from matches
+  where stage = 'group' and "group" is not null
+)
+update matches m
+   set matchday = o.md
+  from ordered o
+ where m.id = o.id
+   and (m.matchday is distinct from o.md);
+
 commit;
 
 -- Sanity report

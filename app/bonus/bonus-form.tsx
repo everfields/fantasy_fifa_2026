@@ -45,6 +45,9 @@ export function BonusForm({
   const [multi, setMulti] = useState<string[]>(
     Array.isArray(initial) ? (initial as string[]) : [],
   );
+  const [text, setText] = useState<string>(
+    typeof initial === "string" ? initial : "",
+  );
 
   function toggleMulti(opt: string) {
     setMulti((prev) =>
@@ -57,7 +60,9 @@ export function BonusForm({
       ? numeric
       : question.type === "multi"
         ? JSON.stringify(multi)
-        : single;
+        : question.type === "text"
+          ? text.trim()
+          : single;
 
   return (
     <form action={formAction} className="space-y-4">
@@ -123,6 +128,23 @@ export function BonusForm({
             disabled={locked}
             onChange={(e) => setNumeric(e.target.value)}
             placeholder="0"
+          />
+        </div>
+      )}
+
+      {question.type === "text" && (
+        <div className="max-w-md space-y-1.5">
+          <Label htmlFor={`text-${question.id}`} className="sr-only">
+            Respuesta
+          </Label>
+          <Input
+            id={`text-${question.id}`}
+            type="text"
+            maxLength={200}
+            value={text}
+            disabled={locked}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Escribe tu respuesta…"
           />
         </div>
       )}

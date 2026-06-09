@@ -50,6 +50,7 @@ export default async function AdminMatchesPage() {
   );
 
   const all = (matches as Match[] | null) ?? [];
+  const jokerCount = all.filter((m) => m.is_joker).length;
 
   // Group by calendar day (the natural "matchday" grouping), preserving order.
   const groups: { key: string; matches: Match[] }[] = [];
@@ -72,6 +73,25 @@ export default async function AdminMatchesPage() {
         title="Gestión de partidos"
         description="Sobrescribe resultados cuando el proveedor falla, fuerza estados, mueve bloqueos y sincroniza bajo demanda. Cada cambio queda auditado."
       />
+
+      <Card className="mb-6 border-amber-200 bg-amber-50/60">
+        <CardContent className="py-4 text-sm text-amber-900">
+          <p className="font-semibold">
+            Jokers asignados: {jokerCount}
+            <span className="font-normal text-amber-700"> (recomendado: 10)</span>
+          </p>
+          <p className="mt-1 text-amber-800">
+            Un partido joker multiplica los puntos de todos los jugadores en ese
+            partido. El admin elige libremente; reparto recomendado:
+          </p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-amber-800">
+            <li>Fase de grupos: 1 joker por jornada (3 en total)</li>
+            <li>Dieciseisavos (round_of_32): 2</li>
+            <li>Octavos (round_of_16): 2</li>
+            <li>Cuartos: 1 · Semifinales: 1 · Final: 1</li>
+          </ul>
+        </CardContent>
+      </Card>
 
       {all.length === 0 ? (
         <Card>

@@ -10,7 +10,10 @@ import {
   scorePrediction,
   scoreBonusAnswer,
   recomputePredictionPoints,
+  roundKeyForMatch,
+  pickRoundWinners,
   type ScorableMatch,
+  type RoundEntry,
 } from "./index";
 import type { ScoringConfig, BonusQuestion } from "@/lib/types";
 
@@ -24,16 +27,20 @@ const CFG: ScoringConfig = {
   diff_bonus_enabled: true,
 };
 
-const finished = (h: number, a: number): ScorableMatch => ({
+// Joker is now a property of the MATCH, not the prediction.
+const finished = (h: number, a: number, is_joker = false): ScorableMatch => ({
   home_score: h,
   away_score: a,
   status: "finished",
+  is_joker,
 });
 
-const pred = (h: number, a: number, is_joker = false) => ({
+const jokerMatch = (h: number, a: number): ScorableMatch =>
+  finished(h, a, true);
+
+const pred = (h: number, a: number) => ({
   home_pred: h,
   away_pred: a,
-  is_joker,
 });
 
 // ---------------------------------------------------------------------------
@@ -84,18 +91,43 @@ test("wrong prediction scores 0", () => {
 });
 
 // ---------------------------------------------------------------------------
-// joker multiplier
+// joker multiplier — driven by MATCH.is_joker, not prediction
 // ---------------------------------------------------------------------------
-test("joker multiplies exact", () => {
-  assert.equal(scorePrediction(pred(2, 1, true), finished(2, 1), CFG), 5 * 2);
+test("joker MATCH multiplies exact", () => {
+  assert.equal(scorePrediction(pred(2, 1), jokerMatch(2, 1), CFG), 5 * 2);
 });
 
-test("joker multiplies sign + diff bonus", () => {
-  assert.equal(scorePrediction(pred(2, 1, true), finished(3, 2), CFG), (3 + 1) * 2);
+test("joker MATCH multiplies sign + diff bonus", () => {
+  assert.equal(scorePrediction(pred(2, 1), jokerMatch(3, 2), CFG), (3 + 1) * 2);
 });
 
-test("joker on a wrong prediction is still 0", () => {
-  assert.equal(scorePrediction(pred(2, 0, true), finished(0, 2), CFG), 0);
+test("non-joker match applies no multiplier", () => {
+  assert.equal(scorePrediction(pred(2, 1), finished(2, 1), CFG), 5);
+  assert.equal(scorePrediction(pred(3, 0), finished(1, 0), CFG), 3);
+});
+
+test("joker MATCH on a wrong prediction is still 0", () => {
+  assert.equal(scorePrediction(pred(2, 0), jokerMatch(0, 2), CFG), 0);
+});
+
+test("prediction.is_joker is ignored — only the match drives the multiplier", () => {
+  // prediction flagged joker, but match is NOT a joker → no multiplier
+  const p = { home_pred: 2, away_pred: 1, is_joker: true };
+  assert.equal(scorePrediction(p, finished(2, 1), CFG), 5);
+});
+
+test("joker MATCH ×3 from config: exact 50→150, sign 20→60", () => {
+  const cfg: ScoringConfig = {
+    ...CFG,
+    exact: 50,
+    sign: 20,
+    diff_bonus: 0,
+    joker_multiplier: 3,
+  };
+  // exact: 50 × 3 = 150
+  assert.equal(scorePrediction(pred(2, 1), jokerMatch(2, 1), cfg), 150);
+  // sign only (wrong diff): 20 × 3 = 60
+  assert.equal(scorePrediction(pred(3, 0), jokerMatch(1, 0), cfg), 60);
 });
 
 // ---------------------------------------------------------------------------
@@ -124,24 +156,39 @@ test("diff bonus disabled yields plain sign points", () => {
 
 test("joker multiplier of 3 honored from config", () => {
   const cfg = { ...CFG, joker_multiplier: 3 };
-  assert.equal(scorePrediction(pred(2, 1, true), finished(2, 1), cfg), 15);
+  assert.equal(scorePrediction(pred(2, 1), jokerMatch(2, 1), cfg), 15);
 });
 
 // ---------------------------------------------------------------------------
 // unfinished / unscored → null
 // ---------------------------------------------------------------------------
 test("scheduled match → null", () => {
-  const m: ScorableMatch = { home_score: null, away_score: null, status: "scheduled" };
+  const m: ScorableMatch = {
+    home_score: null,
+    away_score: null,
+    status: "scheduled",
+    is_joker: false,
+  };
   assert.equal(scorePrediction(pred(2, 1), m, CFG), null);
 });
 
 test("live match → null", () => {
-  const m: ScorableMatch = { home_score: 1, away_score: 0, status: "live" };
+  const m: ScorableMatch = {
+    home_score: 1,
+    away_score: 0,
+    status: "live",
+    is_joker: false,
+  };
   assert.equal(scorePrediction(pred(1, 0), m, CFG), null);
 });
 
 test("finished but null score → null", () => {
-  const m: ScorableMatch = { home_score: null, away_score: null, status: "finished" };
+  const m: ScorableMatch = {
+    home_score: null,
+    away_score: null,
+    status: "finished",
+    is_joker: false,
+  };
   assert.equal(scorePrediction(pred(0, 0), m, CFG), null);
 });
 
@@ -244,13 +291,147 @@ test("recompute works with a Map and missing match → null", () => {
   ]);
 });
 
-test("recompute is idempotent", () => {
-  const matches = { m1: finished(2, 1) };
+test("recompute is idempotent (joker comes from the match)", () => {
+  const matches = { m1: jokerMatch(2, 1) };
   const predictions = [
-    { id: "p1", match_id: "m1", home_pred: 2, away_pred: 1, is_joker: true },
+    { id: "p1", match_id: "m1", home_pred: 2, away_pred: 1 },
   ];
   const a = recomputePredictionPoints(predictions, matches, CFG);
   const b = recomputePredictionPoints(predictions, matches, CFG);
   assert.deepEqual(a, b);
   assert.equal(a[0].points_awarded, 10);
+});
+
+// ---------------------------------------------------------------------------
+// scoreBonusAnswer — text type
+// ---------------------------------------------------------------------------
+test("text exact match awards points", () => {
+  assert.equal(scoreBonusAnswer("Messi", q("text", "Messi")), 10);
+});
+
+test("text is case- and whitespace-insensitive", () => {
+  assert.equal(scoreBonusAnswer("  mEsSi ", q("text", "Messi")), 10);
+  assert.equal(scoreBonusAnswer("LIONEL messi", q("text", " lionel Messi  ")), 10);
+});
+
+test("text wrong answer awards 0", () => {
+  assert.equal(scoreBonusAnswer("Ronaldo", q("text", "Messi")), 0);
+});
+
+test("text coerces numeric answer to string", () => {
+  assert.equal(scoreBonusAnswer(7 as unknown as string, q("text", "7")), 10);
+});
+
+test("text ungraded (null correct) → null", () => {
+  assert.equal(scoreBonusAnswer("Messi", q("text", null)), null);
+});
+
+test("text malformed (array answer) scores 0, not throw", () => {
+  assert.equal(
+    scoreBonusAnswer(["Messi"] as unknown as string, q("text", "Messi")),
+    0,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// roundKeyForMatch
+// ---------------------------------------------------------------------------
+test("roundKeyForMatch maps group matchdays", () => {
+  assert.equal(roundKeyForMatch({ stage: "group", matchday: 1 }), "group-md1");
+  assert.equal(roundKeyForMatch({ stage: "group", matchday: 2 }), "group-md2");
+  assert.equal(roundKeyForMatch({ stage: "group", matchday: 3 }), "group-md3");
+});
+
+test("roundKeyForMatch maps each knockout stage", () => {
+  assert.equal(
+    roundKeyForMatch({ stage: "round_of_32", matchday: null }),
+    "round_of_32",
+  );
+  assert.equal(
+    roundKeyForMatch({ stage: "round_of_16", matchday: null }),
+    "round_of_16",
+  );
+  assert.equal(roundKeyForMatch({ stage: "quarter", matchday: null }), "quarter");
+  assert.equal(roundKeyForMatch({ stage: "semi", matchday: null }), "semi");
+  assert.equal(roundKeyForMatch({ stage: "final", matchday: null }), "final");
+});
+
+test("roundKeyForMatch folds third_place into final", () => {
+  assert.equal(
+    roundKeyForMatch({ stage: "third_place", matchday: null }),
+    "final",
+  );
+});
+
+test("roundKeyForMatch throws on group match with no matchday", () => {
+  assert.throws(() => roundKeyForMatch({ stage: "group", matchday: null }));
+  assert.throws(() => roundKeyForMatch({ stage: "group", matchday: 4 }));
+});
+
+// ---------------------------------------------------------------------------
+// pickRoundWinners
+// ---------------------------------------------------------------------------
+const entry = (
+  user_id: string,
+  round_points: number,
+  exact_hits = 0,
+): RoundEntry => ({ user_id, round_points, exact_hits });
+
+test("pickRoundWinners: single clear winner", () => {
+  const out = pickRoundWinners(
+    [entry("a", 30, 2), entry("b", 20, 1), entry("c", 10, 0)],
+    100,
+  );
+  assert.deepEqual(out, [{ user_id: "a", points: 100, round_points: 30 }]);
+});
+
+test("pickRoundWinners: tie on points resolved by exact hits", () => {
+  const out = pickRoundWinners(
+    [entry("a", 30, 1), entry("b", 30, 3), entry("c", 30, 2)],
+    100,
+  );
+  assert.deepEqual(out, [{ user_id: "b", points: 100, round_points: 30 }]);
+});
+
+test("pickRoundWinners: full tie splits with floor (remainder dropped)", () => {
+  const out = pickRoundWinners(
+    [entry("a", 30, 2), entry("b", 30, 2), entry("c", 30, 2)],
+    100,
+  );
+  // floor(100 / 3) = 33 each, remainder 1 dropped
+  assert.deepEqual(out, [
+    { user_id: "a", points: 33, round_points: 30 },
+    { user_id: "b", points: 33, round_points: 30 },
+    { user_id: "c", points: 33, round_points: 30 },
+  ]);
+});
+
+test("pickRoundWinners: two-way full tie splits evenly", () => {
+  const out = pickRoundWinners([entry("a", 30, 2), entry("b", 30, 2)], 100);
+  assert.deepEqual(out, [
+    { user_id: "a", points: 50, round_points: 30 },
+    { user_id: "b", points: 50, round_points: 30 },
+  ]);
+});
+
+test("pickRoundWinners: all-zero → no champion", () => {
+  const out = pickRoundWinners(
+    [entry("a", 0, 0), entry("b", 0, 0)],
+    100,
+  );
+  assert.deepEqual(out, []);
+});
+
+test("pickRoundWinners: negative-everyone → no champion", () => {
+  const out = pickRoundWinners([entry("a", -5, 0), entry("b", -3, 0)], 100);
+  assert.deepEqual(out, []);
+});
+
+test("pickRoundWinners: single entry with positive points wins", () => {
+  const out = pickRoundWinners([entry("a", 12, 1)], 100);
+  assert.deepEqual(out, [{ user_id: "a", points: 100, round_points: 12 }]);
+});
+
+test("pickRoundWinners: empty entries → []", () => {
+  assert.deepEqual(pickRoundWinners([], 100), []);
 });

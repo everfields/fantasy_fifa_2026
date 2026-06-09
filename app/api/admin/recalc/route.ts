@@ -2,10 +2,12 @@
 // POST /api/admin/recalc — admin-triggered FULL recalculation.
 //
 // Body: { mode: 'preview' | 'execute' }  (zod-validated)
-//   - 'preview': compute point deltas across ALL finished matches and return
-//                counts WITHOUT writing anything.
-//   - 'execute': write only the changed points_awarded (idempotent), refresh
-//                standings, and append an audit_log entry.
+//   - 'preview': compute prediction-point deltas across ALL finished matches AND
+//                the meta-volante round-award deltas, returning counts WITHOUT
+//                writing anything.
+//   - 'execute': write only the changed points_awarded (idempotent), recompute
+//                + persist round_awards (idempotent), refresh standings, and
+//                append an audit_log entry.
 //
 // Reads point values from app_settings (never hardcoded). Writes go through the
 // service-role client. Guarded by requireAdmin(). Never throws raw.
@@ -21,6 +23,7 @@ import {
   loadAppSettings,
   loadFinishedMatchIds,
   logAudit,
+  recomputeRoundAwards,
   refreshStandings,
   rescoreMatches,
 } from "../../_lib";
@@ -58,9 +61,24 @@ export async function POST(req: Request) {
     const settings = await loadAppSettings(supabase);
     const finishedIds = await loadFinishedMatchIds(supabase);
 
+    // 1. Recompute prediction points (idempotent; dryRun in preview).
     const result = await rescoreMatches(supabase, finishedIds, settings.scoring, {
       dryRun: mode === "preview",
     });
+
+    // 2. Recompute meta-volante round awards.
+    //    EXECUTE: this runs AFTER predictions are persisted, so it reads the
+    //    freshly-written points_awarded. PREVIEW: nothing was written, so the
+    //    round-award diff is computed against the CURRENTLY-STORED points. If
+    //    scoring rules changed, the prediction deltas above are exact while the
+    //    roundAwardsAffected count is an estimate vs. current points (it becomes
+    //    exact once execute persists points). Documented for the admin UI.
+    const awards = await recomputeRoundAwards(
+      supabase,
+      settings.scoring,
+      settings.meta_volante_points,
+      { dryRun: mode === "preview" },
+    );
 
     if (mode === "preview") {
       return NextResponse.json({
@@ -69,13 +87,18 @@ export async function POST(req: Request) {
         finishedMatches: finishedIds.length,
         predictionsExamined: result.examined,
         predictionsAffected: result.rescored,
-        // Bounded sample so a preview payload stays small.
+        roundAwardsAffected: awards.awardsAffected,
+        eligibleRounds: awards.eligibleRounds,
+        // Bounded samples so a preview payload stays small.
         sample: result.changes.slice(0, 50),
+        roundAwardSample: awards.changes.slice(0, 50),
       });
     }
 
-    // execute
-    if (result.rescored > 0) {
+    // execute — refresh standings if EITHER predictions or awards changed
+    // (round_awards.points feed standings via refresh_standings()).
+    const standingsRefreshed = result.rescored > 0 || awards.awardsAffected > 0;
+    if (standingsRefreshed) {
       await refreshStandings(supabase);
     }
 
@@ -88,7 +111,10 @@ export async function POST(req: Request) {
         finishedMatches: finishedIds.length,
         predictionsExamined: result.examined,
         predictionsAffected: result.rescored,
+        roundAwardsAffected: awards.awardsAffected,
+        eligibleRounds: awards.eligibleRounds,
         scoring: settings.scoring,
+        metaVolantePoints: settings.meta_volante_points,
       },
       actorId: admin.id,
     });
@@ -99,7 +125,9 @@ export async function POST(req: Request) {
       finishedMatches: finishedIds.length,
       predictionsExamined: result.examined,
       predictionsRescored: result.rescored,
-      standingsRefreshed: result.rescored > 0,
+      roundAwardsAffected: awards.awardsAffected,
+      eligibleRounds: awards.eligibleRounds,
+      standingsRefreshed,
     });
   } catch (err) {
     return NextResponse.json(

@@ -51,6 +51,15 @@ function shapeSettings(raw: Record<string, unknown>): AppSettingsStored {
   const scoring = (raw.scoring as Record<string, unknown>) ?? {};
   return {
     scoring: { ...DEFAULT_APP_SETTINGS.scoring, ...scoring },
+    bonus_default_points:
+      (raw.bonus_default_points as number) ??
+      DEFAULT_APP_SETTINGS.bonus_default_points,
+    group_winner_points:
+      (raw.group_winner_points as number) ??
+      DEFAULT_APP_SETTINGS.group_winner_points,
+    meta_volante_points:
+      (raw.meta_volante_points as number) ??
+      DEFAULT_APP_SETTINGS.meta_volante_points,
     jokers_per_user:
       (raw.jokers_per_user as number) ?? DEFAULT_APP_SETTINGS.jokers_per_user,
     pot_amount: (raw.pot_amount as number) ?? DEFAULT_APP_SETTINGS.pot_amount,

@@ -115,6 +115,16 @@ function Centerpiece({ match }: { match: Match }) {
   );
 }
 
+function JokerBadge() {
+  return (
+    <Badge
+      className="border-amber-400/80 bg-amber-400/20 px-2 py-0 text-[10px] font-extrabold uppercase tracking-widest text-amber-700 dark:text-amber-300"
+    >
+      ★ JOKER
+    </Badge>
+  );
+}
+
 export function MatchCard({
   match,
   homeTeam,
@@ -132,19 +142,35 @@ export function MatchCard({
   className?: string;
   footer?: React.ReactNode;
 }) {
+  // Build the stage label, optionally with matchday for group stage
+  const stageLabel =
+    match.stage === "group" && match.matchday != null
+      ? `${STAGE_LABELS[match.stage]} · J${match.matchday}`
+      : STAGE_LABELS[match.stage] + (match.group ? ` · ${match.group}` : "");
+
   return (
     <Card
       className={cn(
         "overflow-hidden transition-shadow hover:shadow-md",
         match.status === "live" && "ring-1 ring-destructive/40",
+        match.is_joker && "ring-1 ring-amber-400/50",
         className
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 border-b bg-muted/30 px-4 py-2.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {STAGE_LABELS[match.stage]}
-          {match.group ? ` · ${match.group}` : ""}
-        </span>
+      <CardHeader
+        className={cn(
+          "flex flex-row items-center justify-between gap-2 space-y-0 border-b px-4 py-2.5",
+          match.is_joker
+            ? "bg-gradient-to-r from-amber-400/10 via-amber-300/10 to-amber-400/10"
+            : "bg-muted/30"
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+            {stageLabel}
+          </span>
+          {match.is_joker && <JokerBadge />}
+        </div>
         <StatusBadge match={match} />
       </CardHeader>
 
@@ -162,11 +188,6 @@ export function MatchCard({
           <span className="font-bold tabular-nums text-foreground">
             {prediction.home_pred}–{prediction.away_pred}
           </span>
-          {prediction.is_joker && (
-            <Badge variant="success" className="px-1.5 py-0 text-[10px]">
-              Joker x2
-            </Badge>
-          )}
           {prediction.points_awarded !== null && (
             <Badge variant="default" className="px-1.5 py-0 text-[10px]">
               +{prediction.points_awarded} pts
