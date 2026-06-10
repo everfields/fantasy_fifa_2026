@@ -22,9 +22,9 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-muted/40 lg:grid lg:grid-cols-[17rem_1fr]">
-      {/* Control-deck sidebar */}
-      <aside className="sticky top-0 z-30 flex h-auto flex-col gap-6 border-b border-zinc-800 bg-zinc-950 px-4 py-5 text-zinc-100 lg:h-screen lg:border-b-0 lg:border-r">
-        <div className="flex items-center gap-3">
+      {/* Control-deck sidebar: collapses to a compact bar on mobile (scrolls away with the page) */}
+      <aside className="flex flex-col gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:gap-6 lg:border-b-0 lg:border-r lg:py-5">
+        <div className="hidden items-center gap-3 lg:flex">
           <span
             aria-hidden
             className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-lg text-primary-foreground shadow-lg shadow-primary/20"
