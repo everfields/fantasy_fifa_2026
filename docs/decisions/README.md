@@ -18,6 +18,7 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | [0006](0006-bonus-categories.md) | 2026-06-10 | Bonus questions in 3 visual blocks | Accepted | `bonus_questions.category` (`group_winner`/`spain_scorer`/`tournament`); `/bonus` + `/admin/bonus` render 3 sections; migration 0007 seeds Spain first-scorer (×3), pichichi and Curazao questions idempotently |
 | [0007](0007-data-safety-guardrails.md) | 2026-06-10 | Data-safety guardrails — predictions can never be lost | Accepted | Seed files abort if player data exists; `db/backup.sh` one-command backup; additive-only migrations post-launch; never delete/truncate `matches`/`teams`/`bonus_questions` (FK cascades wipe predictions); rules in `db/README.md` "Data safety" |
 | [0008](0008-dark-mode.md) | 2026-06-10 | Dark mode (class-based, next-themes) | Accepted | `next-themes` provider + nav toggle activates the existing `.dark` palette; system default, user override persisted; admin converted from hardcoded zinc to semantic tokens; rule: new UI uses theme tokens |
+| [0009](0009-live-results-llm-web-search.md) | 2026-06-10 | Live results via LLM web search + pg_cron scheduler | Accepted | Supersedes 0002: `LlmWebSearchProvider` (Haiku + web_search, two polls/match, FT-confirmation rule) feeds the dormant `update-results` route; Supabase pg_cron+pg_net every 15 min (Vault secrets); auto-scoring on finish; meta volante/bonus stay manual-recalc; Luis cron → 04:30 UTC |
 
 ## How to add a decision
 

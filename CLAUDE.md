@@ -13,7 +13,7 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 - **Next.js 14** (App Router) + TypeScript + Tailwind + shadcn/ui-style components
 - **Supabase** (Postgres + Auth + Realtime + RLS) — per-user isolation via Row-Level Security
 - **Hosting:** Vercel (app) + Supabase (managed DB)
-- **Football data:** results are entered **manually by the admin** — no live provider, no polling cron (see `docs/decisions/0002-manual-results-no-live-data.md`). The `FootballDataProvider` interface, impls, the `/api/cron/update-results` route and `CRON_SECRET` are kept **dormant** for a possible future re-enable.
+- **Football data:** results update **automatically** via `LlmWebSearchProvider` (`FOOTBALL_PROVIDER=llm`, Anthropic Haiku + web_search tool) feeding the idempotent `/api/cron/update-results` route, triggered every 15 min by **Supabase pg_cron + pg_net** (Vault secrets `app_base_url`/`cron_secret`) — not by a Vercel cron. Two polls per match (half-time +45–70′, full-time from +115′ with retry-until-FT); `finished` only on explicit full-time confirmation; auto-rescore on finish. Admin manual entry + recalc remain authoritative overrides. See `docs/decisions/0009-live-results-llm-web-search.md` (supersedes 0002).
 - **AI ("Luis de la Tracker"):** Anthropic SDK (`@anthropic-ai/sdk`, `ANTHROPIC_API_KEY`, model `TRACKER_MODEL` ?? `claude-opus-4-8`) verbalizes a daily prediction-strategy analysis in persona. Daily Vercel cron. See `docs/decisions/0003-luis-de-la-tracker.md`.
 
 ## Architecture rules (non-negotiable)

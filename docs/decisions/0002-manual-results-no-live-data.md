@@ -1,7 +1,7 @@
 # ADR-0002: Match results entered manually by admin — no live football-data provider
 
 - **Date:** 2026-06-09
-- **Status:** Accepted
+- **Status:** Superseded by 0009
 - **Supersedes:** — (narrows the data-ingestion scope of `PROJECT_PLAN.md` and the provider/cron architecture in `CLAUDE.md`)
 
 ## Context

@@ -7,6 +7,7 @@
 import { ApiFootballProvider } from "@/lib/providers/apiFootball";
 import type { FootballDataProvider } from "@/lib/providers/FootballDataProvider";
 import { FootballDataOrgProvider } from "@/lib/providers/footballDataOrg";
+import { LlmWebSearchProvider } from "@/lib/providers/llmWebSearch";
 
 export type {
   FootballDataProvider,
@@ -16,8 +17,9 @@ export type {
 
 export { FootballDataOrgProvider } from "@/lib/providers/footballDataOrg";
 export { ApiFootballProvider } from "@/lib/providers/apiFootball";
+export { LlmWebSearchProvider } from "@/lib/providers/llmWebSearch";
 
-export type ProviderName = "footballDataOrg" | "apiFootball";
+export type ProviderName = "footballDataOrg" | "apiFootball" | "llm";
 
 /**
  * Returns the configured provider instance based on FOOTBALL_PROVIDER.
@@ -28,6 +30,8 @@ export function getProvider(): FootballDataProvider {
   switch (name) {
     case "apiFootball":
       return new ApiFootballProvider();
+    case "llm":
+      return new LlmWebSearchProvider();
     case "footballDataOrg":
       return new FootballDataOrgProvider();
     default:

@@ -91,6 +91,7 @@ function dayKey(iso: string): string {
 }
 
 interface MatchIndex {
+  byDbId: Map<string, MatchRow>;
   byProviderId: Map<string, MatchRow>;
   byCodeDay: Map<string, MatchRow[]>;
 }
@@ -104,10 +105,12 @@ function indexMatches(
   rows: MatchRow[],
   teamCodeById: Map<string, string>,
 ): MatchIndex {
+  const byDbId = new Map<string, MatchRow>();
   const byProviderId = new Map<string, MatchRow>();
   const byCodeDay = new Map<string, MatchRow[]>();
 
   for (const m of rows) {
+    byDbId.set(m.id, m);
     if (m.provider_match_id) byProviderId.set(m.provider_match_id, m);
 
     const home = m.home_team ? teamCodeById.get(m.home_team) : undefined;
@@ -120,18 +123,23 @@ function indexMatches(
     }
   }
 
-  return { byProviderId, byCodeDay };
+  return { byDbId, byProviderId, byCodeDay };
 }
 
 /**
  * Resolve a provider match to one of our `matches` rows.
- * Primary key: `provider_match_id`. Fallback: home/away team codes on the same
- * calendar day as kickoff (handles rows seeded before a provider id was known).
+ * Primary key: our own `matches.id` (providers like LlmWebSearchProvider set
+ * `providerId` to the DB row id directly — ADR-0009). Then `provider_match_id`
+ * (external providers). Fallback: home/away team codes on the same calendar day
+ * as kickoff (handles rows seeded before a provider id was known).
  */
 function resolveMatch(
   pm: ProviderMatch,
   index: MatchIndex,
 ): MatchRow | null {
+  const byId = index.byDbId.get(pm.providerId);
+  if (byId) return byId;
+
   const direct = index.byProviderId.get(pm.providerId);
   if (direct) return direct;
 

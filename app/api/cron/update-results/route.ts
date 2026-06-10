@@ -1,5 +1,10 @@
 // ============================================================================
-// GET /api/cron/update-results — Vercel cron poller.
+// GET /api/cron/update-results — live-results poller.
+//
+// Triggered by a Supabase pg_cron + pg_net job (every ~15 min), NOT a Vercel
+// cron (ADR-0009: Vercel Hobby rejects sub-daily crons, so the schedule lives
+// in Supabase, reading the URL + secret from Vault). The endpoint itself is
+// scheduler-agnostic: any caller presenting the bearer secret works.
 //
 // Auth: `Authorization: Bearer ${CRON_SECRET}` (rejected otherwise).
 // Steps:

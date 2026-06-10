@@ -59,6 +59,8 @@ db/
     0007_bonus_categories.sql  bonus_questions.category (group_winner|spain_scorer|tournament),
                                backfill group-winner rows, seed Spain-scorer + tournament questions
                                (applied AFTER the seed; idempotent — re-run if applied before)
+    0008_live_results_cron.sql pg_cron + pg_net scheduler: 15-min poll of the
+                               /api/cron/update-results endpoint (ADR-0009). Touches no app tables.
   seed/
     teams.csv            48 teams, groups A–L (PLACEHOLDER data — see warning below)
     matches.csv          72 group matches + 32 knockout placeholders (PLACEHOLDER)
@@ -71,7 +73,7 @@ db/
 Migrations are ordered and must be applied in sequence, then the seed:
 
 ```
-0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql
+0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql
 ```
 
 > **Note `0007` runs AFTER the seed.** It seeds Spain-scorer and tournament
@@ -122,6 +124,9 @@ psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 -f 
 
 # 0007 runs AFTER the seed (it reads teams/matches):
 psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 -f db/migrations/0007_bonus_categories.sql
+
+# 0008 scheduler (pg_cron/pg_net; degrades gracefully if unavailable):
+psql "$(supabase status --output json | jq -r '.DB.url')" -v ON_ERROR_STOP=1 -f db/migrations/0008_live_results_cron.sql
 ```
 
 If you prefer the CLI migration workflow, copy the three migration files into
@@ -146,6 +151,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0004_scoring_overhaul.s
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0006_admin_tools.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/seed/seed.sql   # run from repo root
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0007_bonus_categories.sql  # AFTER the seed
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0008_live_results_cron.sql # scheduler (ADR-0009)
 ```
 
 > The new-user trigger (`on_auth_user_created` on `auth.users`) requires
@@ -275,6 +281,56 @@ Bonus-question categorisation + Spain/tournament seeds. Mirrors the updated
   on the question text and null/`exists` checks on `teams`/`matches`. Runs AFTER
   `seed/seed.sql`; if applied against empty tables it inserts nothing and does not
   fail — **re-run after seeding** to materialise the Spain/tournament questions.
+
+### 0008_live_results_cron.sql
+Live-results scheduler (see `docs/decisions/0009-live-results-llm-web-search.md`).
+**Additive-only, touches no app tables** — it only reads `public.matches`
+(read-only window guard) and creates a scheduler function + cron job.
+- Enables `pg_cron` and `pg_net` (the latter `with schema extensions`, per
+  Supabase convention). Both creations are wrapped so a host without them logs a
+  notice instead of hard-failing — local `supabase` CLI ships both.
+- **`public.poll_match_results()`** (`security definer`, owner postgres,
+  `search_path = ''`): cheap guard first — returns immediately unless a
+  not-`finished` match in `public.matches` kicked off within the last 6 hours
+  (the ADR-0009 poll window), so it costs nothing off-window. Then reads
+  `app_base_url` + `cron_secret` from **Supabase Vault** (early return, no error
+  spam, if either is unset) and fires a fire-and-forget
+  `net.http_get {app_base_url}/api/cron/update-results` with
+  `Authorization: Bearer {cron_secret}` (30 s timeout). Execute is revoked from
+  `anon`/`authenticated` — scheduler only.
+- Schedules job **`live-results-poll`** at `*/15 * * * *`, idempotently
+  (unschedule-if-exists, then `cron.schedule`), wrapped so absence of pg_cron
+  (dev) is a notice, not a failure.
+
+#### One-time prod setup (Vault secrets)
+
+The job reads two secrets from **Supabase Vault** — set them once per project
+(Dashboard → Project Settings → Vault, or via SQL). `cron_secret` **must match**
+the Vercel `CRON_SECRET` env var (the endpoint checks the bearer token):
+
+```sql
+select vault.create_secret('https://<app>.vercel.app', 'app_base_url');
+select vault.create_secret('<same value as Vercel CRON_SECRET>', 'cron_secret');
+```
+
+To rotate, update the matching Vercel env and re-create the Vault secret. Until
+both exist the job ticks harmlessly (logs a notice, no HTTP call).
+
+#### Managing the schedule
+
+```sql
+-- Inspect the job
+select jobid, schedule, command, active from cron.job where jobname = 'live-results-poll';
+-- Recent runs (success/failure)
+select * from cron.job_run_details
+  where jobid = (select jobid from cron.job where jobname = 'live-results-poll')
+  order by start_time desc limit 20;
+-- Pause / stop the poll
+select cron.unschedule('live-results-poll');
+```
+
+Re-running `0008` re-creates the job (it unschedules any existing
+`live-results-poll` first), so the migration is fully idempotent.
 
 ## Seed data — PLACEHOLDER WARNING
 
