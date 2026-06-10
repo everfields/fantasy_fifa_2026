@@ -64,6 +64,30 @@ export function BonusForm({
           ? text.trim()
           : single;
 
+  // Server truth: what is actually saved (the `answer` prop refreshes via
+  // revalidatePath after each save). Shown to the user so there is never any
+  // doubt about which answer counts.
+  const savedDisplay =
+    initial == null
+      ? null
+      : Array.isArray(initial)
+        ? (initial as string[]).join(", ")
+        : String(initial);
+
+  // Is the current input different from the saved answer?
+  const savedSerialized =
+    initial == null
+      ? null
+      : Array.isArray(initial)
+        ? JSON.stringify([...(initial as string[])].sort())
+        : String(initial);
+  const currentSerialized =
+    question.type === "multi"
+      ? JSON.stringify([...multi].sort())
+      : serializedAnswer;
+  const dirty =
+    savedSerialized !== null && currentSerialized !== savedSerialized;
+
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="questionId" value={question.id} />
@@ -149,21 +173,26 @@ export function BonusForm({
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <SubmitButton locked={locked} />
-        {state.ok && !state.error && (
-          <span className="text-sm font-medium text-primary">Guardado ✓</span>
-        )}
-        {state.error && (
+        {state.error ? (
           <span className="text-sm font-medium text-destructive">
             {state.error}
           </span>
-        )}
-        {answer && !state.error && !state.ok && (
-          <span className="text-sm text-muted-foreground">
-            Respuesta enviada
+        ) : savedDisplay && dirty && !locked ? (
+          <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            Cambios sin guardar — guardada:{" "}
+            <span className="font-semibold">{savedDisplay}</span>
           </span>
-        )}
+        ) : savedDisplay ? (
+          <span className="text-sm text-muted-foreground">
+            Tu respuesta:{" "}
+            <span className="font-semibold text-primary">{savedDisplay}</span>{" "}
+            ✓
+          </span>
+        ) : state.ok ? (
+          <span className="text-sm font-medium text-primary">Guardado ✓</span>
+        ) : null}
       </div>
     </form>
   );
