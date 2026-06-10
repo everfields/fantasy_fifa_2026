@@ -86,6 +86,7 @@ daily `crons` entry is Hobby-legal and does **not** resurrect live-data polling 
 
 ## Conventions
 - Server Components by default; `"use client"` only when needed.
+- **Dark mode:** `next-themes` (class-based) — UI colors must use the semantic tokens (`bg-background`, `text-muted-foreground`, `border-border`…), never hardcoded palette colors, so both themes work (see `docs/decisions/0008-dark-mode.md`).
 - Validate inputs with `zod` in Server Actions / API routes.
 - `npm run typecheck` and `npm run lint` must pass before considering work done.
 - Secrets in `.env` (see `.env.example`); never commit them.

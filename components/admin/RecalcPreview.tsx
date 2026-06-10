@@ -32,10 +32,10 @@ function Stat({
       ? "text-primary"
       : tone === "negative"
         ? "text-destructive"
-        : "text-zinc-900";
+        : "text-foreground";
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className={`mt-1 font-mono text-2xl font-black tabular-nums ${color}`}>
@@ -95,7 +95,7 @@ export function RecalcPreview() {
                 setState(result);
               })
             }
-            className="bg-zinc-900 hover:bg-zinc-800"
+            className="bg-foreground text-background hover:bg-foreground/90"
           >
             {pendingApply ? "Aplicando…" : "Aplicar recálculo"}
           </Button>
@@ -174,9 +174,9 @@ export function RecalcPreview() {
             </div>
 
             {preview.changes.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border border-zinc-200">
+              <div className="overflow-hidden rounded-lg border border-border">
                 <table className="w-full text-sm">
-                  <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-400">
+                  <thead className="bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 font-semibold">Predicción</th>
                       <th className="px-3 py-2 text-right font-semibold">
@@ -190,8 +190,8 @@ export function RecalcPreview() {
                   </thead>
                   <tbody>
                     {preview.changes.map((c) => (
-                      <tr key={c.id} className="border-t border-zinc-100">
-                        <td className="px-3 py-1.5 font-mono text-xs text-zinc-500">
+                      <tr key={c.id} className="border-t border-border">
+                        <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">
                           {c.id.slice(0, 8)}
                         </td>
                         <td className="px-3 py-1.5 text-right font-mono tabular-nums">
@@ -206,7 +206,7 @@ export function RecalcPreview() {
                               ? "text-primary"
                               : c.delta < 0
                                 ? "text-destructive"
-                                : "text-zinc-400"
+                                : "text-muted-foreground"
                           }`}
                         >
                           {fmtDelta(c.delta)}
@@ -216,7 +216,7 @@ export function RecalcPreview() {
                   </tbody>
                 </table>
                 {preview.changedCount > preview.changes.length ? (
-                  <p className="bg-zinc-50 px-3 py-2 text-xs text-zinc-400">
+                  <p className="bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                     Mostrando {preview.changes.length} de {preview.changedCount}{" "}
                     cambios.
                   </p>

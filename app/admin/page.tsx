@@ -59,13 +59,13 @@ function Stat({
   return (
     <Card>
       <CardContent className="pt-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </p>
-        <p className="mt-1 font-mono text-3xl font-black tabular-nums text-zinc-900">
+        <p className="mt-1 font-mono text-3xl font-black tabular-nums text-foreground">
           {value}
         </p>
-        {hint ? <p className="mt-1 text-xs text-zinc-400">{hint}</p> : null}
+        {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
   );
@@ -120,7 +120,7 @@ export default async function AdminHomePage() {
         />
       </div>
 
-      <h2 className="mb-3 mt-10 text-sm font-bold uppercase tracking-wider text-zinc-500">
+      <h2 className="mb-3 mt-10 text-sm font-bold uppercase tracking-wider text-muted-foreground">
         Accesos rápidos
       </h2>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -132,13 +132,13 @@ export default async function AdminHomePage() {
                   {s.title}
                   <span
                     aria-hidden
-                    className="text-zinc-300 transition-transform group-hover:translate-x-1 group-hover:text-primary"
+                    className="text-muted-foreground/70 transition-transform group-hover:translate-x-1 group-hover:text-primary"
                   >
                     →
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-zinc-500">{s.body}</CardContent>
+              <CardContent className="text-sm text-muted-foreground">{s.body}</CardContent>
             </Card>
           </Link>
         ))}

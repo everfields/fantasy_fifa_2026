@@ -112,19 +112,19 @@ export function PotManager({
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2"
+                  className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
                 >
                   <span className="flex items-center gap-2 text-sm">
                     <Badge variant={i === 0 ? "default" : "secondary"}>
                       {i + 1}º
                     </Badge>
-                    <span className="font-medium text-zinc-700">
+                    <span className="font-medium text-secondary-foreground">
                       {player?.display_name ?? "—"}
                     </span>
                   </span>
                   <span className="font-mono text-sm font-bold tabular-nums">
                     {eur(potAmount * pct)}
-                    <span className="ml-1 text-xs font-normal text-zinc-400">
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
                       ({Math.round(pct * 100)} %)
                     </span>
                   </span>
@@ -139,7 +139,7 @@ export function PotManager({
         <CardHeader>
           <CardTitle>
             Pagos
-            <span className="ml-2 text-sm font-normal text-zinc-400">
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
               {paidCount} / {players.length} pagados · recaudado ≈ {eur(collected)}
             </span>
           </CardTitle>
@@ -149,7 +149,7 @@ export function PotManager({
         </CardHeader>
         <CardContent className="space-y-2">
           {players.length === 0 ? (
-            <p className="py-6 text-center text-sm text-zinc-500">
+            <p className="py-6 text-center text-sm text-muted-foreground">
               No hay jugadores.
             </p>
           ) : (
@@ -165,12 +165,12 @@ function PaidRow({ player }: { player: PotPlayer }) {
   const [state, action] = useFormState(setPaid, initial);
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-zinc-100 px-3 py-2">
+    <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
       <Avatar className="h-8 w-8">
         {player.avatar ? <AvatarImage src={player.avatar} alt="" /> : null}
         <AvatarFallback>{initials(player.display_name)}</AvatarFallback>
       </Avatar>
-      <span className="flex-1 text-sm font-medium text-zinc-800">
+      <span className="flex-1 text-sm font-medium text-secondary-foreground">
         {player.display_name}
       </span>
       {player.paid ? (

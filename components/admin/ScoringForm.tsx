@@ -45,7 +45,7 @@ function Field({
       {error ? (
         <p className="text-xs font-medium text-destructive">{error}</p>
       ) : hint ? (
-        <p className="text-xs text-zinc-400">{hint}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
       ) : null}
     </div>
   );
@@ -223,10 +223,10 @@ export function ScoringForm({ settings }: { settings: AppSettings }) {
             />
           </Field>
 
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3">
             <div>
               <p className="text-sm font-semibold">Temporada bloqueada</p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Impide nuevas predicciones y cambios de los jugadores.
               </p>
             </div>
@@ -258,12 +258,12 @@ function RuleRow({
   error?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-100 pb-4 last:border-0 last:pb-0">
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4 last:border-0 last:pb-0">
       <div className="min-w-0 flex-1">
         <Label htmlFor={id} className="text-sm font-semibold">
           {label}
         </Label>
-        <p className="text-xs text-zinc-400">{hint}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
         {error ? (
           <p className="mt-1 text-xs font-medium text-destructive">{error}</p>
         ) : null}
@@ -278,7 +278,7 @@ function RuleRow({
             defaultValue={defaultValue}
             className="w-20 text-center font-mono tabular-nums"
           />
-          <span className="text-xs text-zinc-400">pts</span>
+          <span className="text-xs text-muted-foreground">pts</span>
         </div>
         <ToggleField name={`${id}_enabled`} defaultChecked={defaultEnabled} />
       </div>

@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   CalendarDays,
   Gift,
   Home,
+  Moon,
   Radar,
   Settings,
+  Sun,
   Trophy,
 } from "lucide-react";
 
@@ -31,6 +34,7 @@ export function Nav({
   isAdmin: boolean;
 }) {
   const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
@@ -98,6 +102,17 @@ export function Nav({
                 <Settings className="h-5 w-5" />
               </Link>
             )}
+            <button
+              type="button"
+              aria-label="Cambiar tema"
+              onClick={() =>
+                setTheme(resolvedTheme === "dark" ? "light" : "dark")
+              }
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <Sun className="h-5 w-5 dark:hidden" />
+              <Moon className="hidden h-5 w-5 dark:block" />
+            </button>
             <span className="hidden text-sm font-medium text-muted-foreground md:inline">
               {displayName}
             </span>

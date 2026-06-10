@@ -20,11 +20,11 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-2xl font-black tracking-tight text-zinc-900 sm:text-3xl">
+        <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
           {title}
         </h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-zinc-500">{description}</p>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {action ? <div className="flex items-center gap-2">{action}</div> : null}

@@ -74,17 +74,17 @@ export default async function AdminMatchesPage() {
         description="Sobrescribe resultados cuando el proveedor falla, fuerza estados, mueve bloqueos y sincroniza bajo demanda. Cada cambio queda auditado."
       />
 
-      <Card className="mb-6 border-amber-200 bg-amber-50/60">
-        <CardContent className="py-4 text-sm text-amber-900">
+      <Card className="mb-6 border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/30">
+        <CardContent className="py-4 text-sm text-amber-900 dark:text-amber-200">
           <p className="font-semibold">
             Jokers asignados: {jokerCount}
-            <span className="font-normal text-amber-700"> (recomendado: 10)</span>
+            <span className="font-normal text-amber-700 dark:text-amber-400"> (recomendado: 10)</span>
           </p>
-          <p className="mt-1 text-amber-800">
+          <p className="mt-1 text-amber-800 dark:text-amber-300">
             Un partido joker multiplica los puntos de todos los jugadores en ese
             partido. El admin elige libremente; reparto recomendado:
           </p>
-          <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-amber-800">
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-amber-800 dark:text-amber-300">
             <li>Fase de grupos: 1 joker por jornada (3 en total)</li>
             <li>Dieciseisavos (round_of_32): 2</li>
             <li>Octavos (round_of_16): 2</li>
@@ -95,7 +95,7 @@ export default async function AdminMatchesPage() {
 
       {all.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-zinc-500">
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
             No hay partidos cargados todavía.
           </CardContent>
         </Card>
@@ -106,7 +106,7 @@ export default async function AdminMatchesPage() {
               <CardHeader>
                 <CardTitle className="text-base capitalize">
                   {dayLabel(key)}
-                  <span className="ml-2 text-xs font-normal text-zinc-400">
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
                     {dayMatches.length} partido
                     {dayMatches.length === 1 ? "" : "s"}
                   </span>
@@ -115,7 +115,7 @@ export default async function AdminMatchesPage() {
               <CardContent>
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wider text-zinc-400">
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                       <th className="pb-2 pr-3 font-semibold">Hora</th>
                       <th className="pb-2 pr-3 font-semibold">Partido</th>
                       <th className="pb-2 pr-3 text-center font-semibold">Marcador</th>

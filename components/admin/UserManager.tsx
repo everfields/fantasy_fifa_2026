@@ -52,7 +52,7 @@ export function UserManager({
   if (users.length === 0) {
     return (
       <Card>
-        <CardContent className="py-10 text-center text-sm text-zinc-500">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
           No hay jugadores registrados.
         </CardContent>
       </Card>
@@ -101,12 +101,12 @@ function UserCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-semibold text-zinc-900">{user.display_name}</p>
+            <p className="font-semibold text-foreground">{user.display_name}</p>
             {user.role === "admin" ? <Badge>Admin</Badge> : null}
             {user.banned ? <Badge variant="destructive">Baneado</Badge> : null}
             {isSelf ? <Badge variant="outline">Tú</Badge> : null}
           </div>
-          <p className="font-mono text-xs text-zinc-400">
+          <p className="font-mono text-xs text-muted-foreground">
             {user.joker_count} joker{user.joker_count === 1 ? "" : "s"}
             {adjustmentTotal !== 0 ? (
               <span
@@ -210,31 +210,31 @@ function AdjustmentsPanel({
   const [addState, addAction] = useFormState(addPointAdjustment, initial);
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50/60">
+    <div className="rounded-lg border border-border bg-muted/50">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-zinc-700"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-secondary-foreground"
       >
         <span>Ajustes de puntos ({adjustments.length})</span>
-        <span className="text-zinc-400">{open ? "▲" : "▼"}</span>
+        <span className="text-muted-foreground">{open ? "▲" : "▼"}</span>
       </button>
 
       {open ? (
-        <div className="space-y-3 border-t border-zinc-200 px-4 py-3">
+        <div className="space-y-3 border-t border-border px-4 py-3">
           {adjustments.length > 0 ? (
-            <ul className="divide-y divide-zinc-200">
+            <ul className="divide-y divide-border">
               {adjustments.map((adj) => (
                 <AdjustmentItem key={adj.id} adjustment={adj} />
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-zinc-400">Sin ajustes registrados.</p>
+            <p className="text-xs text-muted-foreground">Sin ajustes registrados.</p>
           )}
 
-          <form action={addAction} className="space-y-2 border-t border-zinc-200 pt-3">
+          <form action={addAction} className="space-y-2 border-t border-border pt-3">
             <input type="hidden" name="user_id" value={userId} />
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               Concede o resta puntos por si ha sucedido algún evento no previsto.
               Acepta números negativos. El motivo es obligatorio.
             </p>
@@ -301,8 +301,8 @@ function AdjustmentItem({ adjustment }: { adjustment: PointAdjustment }) {
         {adjustment.points}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-zinc-700">{adjustment.reason}</p>
-        <p className="text-xs text-zinc-400">
+        <p className="truncate text-sm text-secondary-foreground">{adjustment.reason}</p>
+        <p className="text-xs text-muted-foreground">
           {new Date(adjustment.created_at).toLocaleString("es-ES")}
           {state.message ? (
             <span

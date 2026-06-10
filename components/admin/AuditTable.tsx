@@ -44,14 +44,14 @@ function actionLabel(a: string): string {
 export function AuditTable({ rows }: { rows: AuditRow[] }) {
   if (rows.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-zinc-200 py-12 text-center text-sm text-zinc-500">
+      <p className="rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
         Sin registros de auditoría todavía.
       </p>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -79,7 +79,7 @@ function AuditRowView({ row }: { row: AuditRow }) {
   return (
     <>
       <TableRow>
-        <TableCell className="whitespace-nowrap font-mono text-xs text-zinc-500">
+        <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
           {new Date(row.created_at).toLocaleString("es-ES", {
             day: "2-digit",
             month: "2-digit",
@@ -90,16 +90,16 @@ function AuditRowView({ row }: { row: AuditRow }) {
         </TableCell>
         <TableCell className="text-sm font-medium">
           {row.actor_name ?? (
-            <span className="text-zinc-400">desconocido</span>
+            <span className="text-muted-foreground">desconocido</span>
           )}
         </TableCell>
         <TableCell>
           <Badge variant="secondary">{actionLabel(row.action)}</Badge>
         </TableCell>
-        <TableCell className="text-sm text-zinc-500">
+        <TableCell className="text-sm text-muted-foreground">
           {row.target_type}
           {row.target_id ? (
-            <span className="ml-1 font-mono text-xs text-zinc-400">
+            <span className="ml-1 font-mono text-xs text-muted-foreground">
               #{row.target_id.slice(0, 8)}
             </span>
           ) : null}
@@ -114,13 +114,13 @@ function AuditRowView({ row }: { row: AuditRow }) {
               {open ? "Ocultar" : "Ver"}
             </button>
           ) : (
-            <span className="text-xs text-zinc-300">—</span>
+            <span className="text-xs text-muted-foreground/70">—</span>
           )}
         </TableCell>
       </TableRow>
       {open && hasDetail ? (
         <TableRow>
-          <TableCell colSpan={5} className="bg-zinc-50">
+          <TableCell colSpan={5} className="bg-muted/50">
             <div className="grid gap-3 sm:grid-cols-2">
               <Diff title="Antes" value={row.before} />
               <Diff title="Después" value={row.after} />
@@ -135,9 +135,10 @@ function AuditRowView({ row }: { row: AuditRow }) {
 function Diff({ title, value }: { title: string; value: unknown }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </p>
+      {/* Fixed dark code block — readable in both light and dark themes. */}
       <pre className="overflow-x-auto rounded-md bg-zinc-900 p-3 font-mono text-xs text-zinc-100">
         {value == null ? "—" : JSON.stringify(value, null, 2)}
       </pre>

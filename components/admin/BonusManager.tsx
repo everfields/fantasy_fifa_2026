@@ -109,7 +109,7 @@ export function BonusManager({
 
       {questions.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-zinc-500">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
             Aún no hay preguntas bonus.
           </CardContent>
         </Card>
@@ -124,7 +124,7 @@ export function BonusManager({
           if (inSection.length === 0) return null;
           return (
             <div key={category} className="space-y-3">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                 {label} ({inSection.length})
               </h2>
               {inSection.map((q) => (
@@ -338,9 +338,9 @@ function QuestionCard({
                 <Badge variant="outline">Abierta</Badge>
               )}
             </div>
-            <p className="font-medium text-zinc-900">{q.text}</p>
+            <p className="font-medium text-foreground">{q.text}</p>
             {q.options?.length ? (
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {q.options.join(" · ")}
               </p>
             ) : null}
@@ -379,24 +379,24 @@ function TextValidationPanel({
 
   if (answers.length === 0) {
     return (
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-muted-foreground">
         Todavía no hay respuestas de jugadores para validar.
       </p>
     );
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50/60">
+    <div className="rounded-lg border border-border bg-muted/50">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-zinc-700"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-secondary-foreground"
       >
         <span>Validar respuestas ({answers.length})</span>
-        <span className="text-zinc-400">{open ? "▲" : "▼"}</span>
+        <span className="text-muted-foreground">{open ? "▲" : "▼"}</span>
       </button>
       {open ? (
-        <ul className="divide-y divide-zinc-200 border-t border-zinc-200">
+        <ul className="divide-y divide-border border-t border-border">
           {answers.map((a) => (
             <TextAnswerItem key={a.id} questionPoints={q.points} answer={a} />
           ))}
@@ -423,20 +423,20 @@ function TextAnswerItem({
         ✗ incorrecta
       </span>
     ) : (
-      <span className="text-xs font-medium text-zinc-400">sin validar</span>
+      <span className="text-xs font-medium text-muted-foreground">sin validar</span>
     );
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-zinc-900">
+        <p className="text-sm font-medium text-foreground">
           {answer.display_name}
         </p>
-        <p className="text-sm text-zinc-600">“{answer.answer}”</p>
+        <p className="text-sm text-secondary-foreground">“{answer.answer}”</p>
         <div className="mt-0.5 flex items-center gap-2">
           {state_label}
           {answer.manual_correct === true ? (
-            <span className="text-xs text-zinc-400">+{questionPoints} pts</span>
+            <span className="text-xs text-muted-foreground">+{questionPoints} pts</span>
           ) : null}
           {state.message ? (
             <span
@@ -504,7 +504,7 @@ function DeleteQuestionDialog({
           <DialogDescription>{q.text}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-secondary-foreground">
             Esta acción es <strong>irreversible</strong>. Se borrará también
             todas las respuestas de los jugadores
             {answerCount > 0 ? ` (${answerCount} respuesta(s))` : ""} y los
@@ -597,7 +597,7 @@ function CloseQuestionDialog({ q }: { q: BonusQuestion }) {
                 placeholder="Se compara sin distinguir mayúsculas ni espacios"
                 required
               />
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-muted-foreground">
                 La comparación ignora mayúsculas/minúsculas y espacios sobrantes.
               </p>
             </div>

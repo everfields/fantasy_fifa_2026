@@ -58,8 +58,8 @@ export function MatchRow({
   const meta = STATUS_META[match.status];
 
   return (
-    <tr className="border-b border-zinc-100 last:border-0">
-      <td className="py-3 pr-3 text-sm text-zinc-500">
+    <tr className="border-b border-border last:border-0">
+      <td className="py-3 pr-3 text-sm text-muted-foreground">
         {new Date(match.kickoff_at).toLocaleString("es-ES", {
           day: "2-digit",
           month: "short",
@@ -68,12 +68,12 @@ export function MatchRow({
         })}
       </td>
       <td className="py-3 pr-3">
-        <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-900">
+        <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <span>{home.code}</span>
-          <span className="font-mono tabular-nums text-zinc-400">vs</span>
+          <span className="font-mono tabular-nums text-muted-foreground">vs</span>
           <span>{away.code}</span>
         </div>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-muted-foreground">
           {home.name} – {away.name}
         </p>
       </td>
@@ -128,7 +128,7 @@ function EditDialog({
         </DialogHeader>
 
         {/* Result + status */}
-        <form action={resAction} className="space-y-4 border-b border-zinc-100 pb-5">
+        <form action={resAction} className="space-y-4 border-b border-border pb-5">
           <input type="hidden" name="match_id" value={match.id} />
           <div className="flex items-end gap-3">
             <div className="space-y-1.5">
@@ -142,7 +142,7 @@ function EditDialog({
                 className="w-20 text-center font-mono"
               />
             </div>
-            <span className="pb-2 font-mono text-zinc-400">-</span>
+            <span className="pb-2 font-mono text-muted-foreground">-</span>
             <div className="space-y-1.5">
               <Label htmlFor={`away-${match.id}`}>{away.code}</Label>
               <Input
@@ -175,7 +175,7 @@ function EditDialog({
         </form>
 
         {/* Lock time */}
-        <form action={lockAction} className="space-y-3 border-b border-zinc-100 pb-5">
+        <form action={lockAction} className="space-y-3 border-b border-border pb-5">
           <input type="hidden" name="match_id" value={match.id} />
           <Label htmlFor={`locks-${match.id}`}>Hora de bloqueo / kickoff</Label>
           <div className="flex items-center gap-2">
@@ -193,19 +193,19 @@ function EditDialog({
         </form>
 
         {/* Joker toggle */}
-        <form action={jokerAction} className="space-y-3 border-b border-zinc-100 pb-5">
+        <form action={jokerAction} className="space-y-3 border-b border-border pb-5">
           <input type="hidden" name="match_id" value={match.id} />
           {/* Post the TARGET state: when currently joker, the button removes it. */}
           <input type="hidden" name="is_joker" value={match.is_joker ? "false" : "true"} />
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-zinc-900">
+              <p className="text-sm font-semibold text-foreground">
                 Partido joker{" "}
                 {match.is_joker ? (
                   <Badge className="ml-1 bg-amber-500 hover:bg-amber-500">★ Activo</Badge>
                 ) : null}
               </p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Multiplica los puntos de TODOS los jugadores en este partido por el
                 multiplicador de joker.
               </p>
@@ -224,7 +224,7 @@ function EditDialog({
         <form action={syncAction} className="space-y-3">
           <input type="hidden" name="match_id" value={match.id} />
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted-foreground">
               Forzar sincronización desde el proveedor de datos.
             </p>
             <SubmitButton

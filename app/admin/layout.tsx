@@ -21,7 +21,7 @@ export default async function AdminLayout({
   const profile = await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17rem_1fr]">
+    <div className="min-h-screen bg-muted/40 lg:grid lg:grid-cols-[17rem_1fr]">
       {/* Control-deck sidebar */}
       <aside className="sticky top-0 z-30 flex h-auto flex-col gap-6 border-b border-zinc-800 bg-zinc-950 px-4 py-5 text-zinc-100 lg:h-screen lg:border-b-0 lg:border-r">
         <div className="flex items-center gap-3">
