@@ -95,7 +95,7 @@
       <li class="done"><b>Deploy en Vercel</b>: proyecto <code>carlos-andujar/fantasy_fifa_2026</code> desplegado en producción, repo de GitHub conectado (auto-deploy en cada push), 7 variables de entorno cargadas (incl. <code>ANTHROPIC_API_KEY</code> y <code>FOOTBALL_PROVIDER=llm</code>). Plan Hobby → cron diario de Luis; el poll de resultados lo dispara Supabase pg_cron. <i>(hecho — <a href="https://resiporra.es" target="_blank">resiporra.es</a> / fantasyfifa2026.vercel.app)</i></li>
       <li class="done"><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code> <i>(hecho — admin activo)</i></li>
       <li class="done"><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, bote (pot) y dejar <code>season_locked=false</code> al abrir. <i>(hecho y actualizado por ADR-0001 — exacto 50 / signo 20 / dif +10, joker ×3 <b>asignado por el admin por partido</b>, meta volante 100)</i></li>
-      <li><b>Config admin de arranque</b>: marcar los 3 jokers de la jornada 1 en <code>/admin/matches</code>, generar las preguntas de campeón de grupo en <code>/admin/bonus</code> y correr un recalc baseline en <code>/admin/recalc</code>.</li>
+      <li class="done"><b>Config admin de arranque</b>: 3 jokers de grupos marcados (Brasil–Marruecos, Alemania–Costa de Marfil, Uruguay–España) y 12 preguntas de campeón de grupo generadas. <i>(hecho 10-jun)</i></li>
       <li class="done"><b>Auth lista para invitar</b>: Site URL = resiporra.es, redirect URLs configuradas y confirmación de email desactivada para el grupo privado. <i>(hecho 10-jun)</i> Solo queda compartir el enlace de <code>/signup</code> por WhatsApp.</li>
     </ol>
   </section>
@@ -149,7 +149,7 @@
 const DATA = {
   block: [
     ["migration-0004", "Aplicar migración 0004 (overhaul de scoring)", "HECHO ✓ — aplicada a Supabase; detalle en <code>docs/decisions/0001-scoring-overhaul.md</code>. Las migraciones 0005–0008 (ajustes, categorías bonus, pg_cron) también están aplicadas en prod.", "p1"],
-    ["admin-config", "Config admin de arranque (jokers MD1 + campeones de grupo + recalc)", "Antes del pitido inicial: marcar los 3 jokers de la jornada 1 en /admin/matches, pulsar 'generar preguntas de campeón de grupo' en /admin/bonus y correr un recalc baseline en /admin/recalc.", "p1"],
+    ["admin-config", "Config admin de arranque (jokers + campeones de grupo)", "HECHO ✓ (10-jun) — 3 jokers de grupos marcados (Brasil–Marruecos 13-jun, Alemania–Costa de Marfil 20-jun, Uruguay–España 27-jun) y las 12 preguntas de campeón de grupo generadas. Recalc baseline innecesario: standings ya refrescado (migración 0009) y no hay partidos puntuados.", "p1"],
     ["env-vars", "Variables de entorno en Vercel", "HECHO ✓ — 7 variables en Production: las 3 de Supabase, API_FOOTBALL_KEY, ANTHROPIC_API_KEY, CRON_SECRET (corregido 10-jun, ya coincide con .env.local) y FOOTBALL_PROVIDER=llm (cambiado y redeploy 10-jun).", "p1"],
     ["cron-middleware", "Bug: middleware redirige el cron", "HECHO ✓ — el matcher excluye /api; los crons llegan a su propia auth (CRON_SECRET) sin 307.", "p2"],
     ["verify-provider", "Resultados en vivo (proveedor)", "HECHO ✓ — resuelto con ADR-0009: LlmWebSearchProvider + pg_cron cada 15 min. Verificado en prod el 10-jun: el endpoint responde {\"ok\":true,\"provider\":\"llmWebSearch\"}. Fallback: entrada manual en /admin/matches sigue mandando.", "p1"],
