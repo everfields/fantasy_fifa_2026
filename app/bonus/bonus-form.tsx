@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 
 import type { BonusAnswer, BonusQuestion } from "@/lib/types";
@@ -11,11 +11,23 @@ import { cn } from "@/lib/utils";
 
 import { saveBonusAnswer, type SaveBonusState } from "./actions";
 
-function SubmitButton({ locked }: { locked: boolean }) {
+function SubmitButton({
+  locked,
+  hasSaved,
+}: {
+  locked: boolean;
+  hasSaved: boolean;
+}) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="sm" disabled={pending || locked}>
-      {pending ? "Guardando…" : locked ? "Cerrada" : "Guardar"}
+      {pending
+        ? "Guardando…"
+        : locked
+          ? "Cerrada"
+          : hasSaved
+            ? "Actualizar"
+            : "Guardar"}
     </Button>
   );
 }
@@ -48,6 +60,23 @@ export function BonusForm({
   const [text, setText] = useState<string>(
     typeof initial === "string" ? initial : "",
   );
+
+  // Keep the inputs in sync with the SAVED answer whenever it changes (after a
+  // save → revalidatePath the prop refreshes; without this the controls could
+  // sit empty next to a "guardada: X" notice and look like unsaved changes).
+  const initialKey = JSON.stringify(initial ?? null);
+  useEffect(() => {
+    if (initial == null) return;
+    if (typeof initial === "string") {
+      setSingle(initial);
+      setText(initial);
+    } else if (typeof initial === "number") {
+      setNumeric(String(initial));
+    } else if (Array.isArray(initial)) {
+      setMulti(initial as string[]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialKey]);
 
   function toggleMulti(opt: string) {
     setMulti((prev) =>
@@ -85,8 +114,14 @@ export function BonusForm({
     question.type === "multi"
       ? JSON.stringify([...multi].sort())
       : serializedAnswer;
+  // "Unsaved changes" only when the user typed/picked something DIFFERENT from
+  // the saved answer — an empty/untouched control is not a pending change.
+  const currentEmpty =
+    question.type === "multi" ? multi.length === 0 : serializedAnswer === "";
   const dirty =
-    savedSerialized !== null && currentSerialized !== savedSerialized;
+    savedSerialized !== null &&
+    !currentEmpty &&
+    currentSerialized !== savedSerialized;
 
   return (
     <form action={formAction} className="space-y-4">
@@ -174,7 +209,7 @@ export function BonusForm({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton locked={locked} />
+        <SubmitButton locked={locked} hasSaved={savedDisplay !== null} />
         {state.error ? (
           <span className="text-sm font-medium text-destructive">
             {state.error}
