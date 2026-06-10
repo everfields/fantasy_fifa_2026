@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import {
   BookOpen,
   CalendarDays,
   Gift,
   Home,
+  Menu,
   Moon,
   Radar,
   Settings,
   Sun,
   Trophy,
+  X,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -22,7 +25,7 @@ import { Button } from "@/components/ui/button";
 const LINKS = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/matches", label: "Partidos", icon: CalendarDays },
-  { href: "/standings", label: "Clasificación", shortLabel: "Tabla", icon: Trophy },
+  { href: "/standings", label: "Clasificación", icon: Trophy },
   { href: "/bonus", label: "Bonus", icon: Gift },
   { href: "/tracker", label: "AI Tracker", icon: Radar },
   { href: "/rules", label: "Reglas", icon: BookOpen },
@@ -37,8 +40,21 @@ export function Nav({
 }) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+
+  // Auto-hide the drawer on navigation and on Escape.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   async function signOut() {
     const supabase = createClient();
@@ -49,7 +65,17 @@ export function Nav({
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="container flex h-16 items-center gap-6">
+        <div className="container flex h-16 items-center gap-3 md:gap-6">
+          <button
+            type="button"
+            aria-label="Abrir menú"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
           <Link href="/dashboard" className="flex items-center gap-2 font-black">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <span aria-hidden className="text-lg">⚽</span>
@@ -91,20 +117,6 @@ export function Nav({
           </nav>
 
           <div className="ml-auto flex items-center gap-3 md:ml-0">
-            {isAdmin && (
-              <Link
-                href="/admin"
-                aria-label="Admin"
-                className={cn(
-                  "grid h-9 w-9 place-items-center rounded-full transition-colors md:hidden",
-                  pathname.startsWith("/admin")
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                <Settings className="h-5 w-5" />
-              </Link>
-            )}
             <button
               type="button"
               aria-label="Cambiar tema"
@@ -126,12 +138,45 @@ export function Nav({
         </div>
       </header>
 
-      {/* Mobile bottom tab bar — app-like navigation. */}
-      <nav
-        aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+      {/* Mobile drawer — auto-hidden sidebar with every section. */}
+      <div
+        className={cn("fixed inset-0 z-50 md:hidden", open ? "" : "pointer-events-none")}
+        aria-hidden={!open}
       >
-        <div className="grid h-16 grid-cols-5">
+        <div
+          className={cn(
+            "absolute inset-0 bg-black/50 transition-opacity duration-200",
+            open ? "opacity-100" : "opacity-0",
+          )}
+          onClick={() => setOpen(false)}
+        />
+        <aside
+          role="dialog"
+          aria-label="Navegación principal"
+          className={cn(
+            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-1 border-r border-border bg-background p-4 shadow-xl transition-transform duration-200",
+            open ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2 font-black">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+                <span aria-hidden>⚽</span>
+              </span>
+              <span className="tracking-tight">
+                Resi<span className="text-primary">porra</span>
+              </span>
+            </span>
+            <button
+              type="button"
+              aria-label="Cerrar menú"
+              onClick={() => setOpen(false)}
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
           {LINKS.map((l) => {
             const active = isActive(l.href);
             const Icon = l.icon;
@@ -141,24 +186,40 @@ export function Nav({
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors",
-                  active ? "text-primary" : "text-muted-foreground",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                  active
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 )}
               >
-                <span
-                  className={cn(
-                    "grid h-7 w-12 place-items-center rounded-full transition-colors",
-                    active && "bg-primary/15",
-                  )}
-                >
-                  <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
-                </span>
-                {l.shortLabel ?? l.label}
+                <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+                {l.label}
               </Link>
             );
           })}
-        </div>
-      </nav>
+
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                pathname.startsWith("/admin")
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+            >
+              <Settings className="h-5 w-5" />
+              Admin
+            </Link>
+          )}
+
+          <div className="mt-auto border-t border-border pt-3">
+            <p className="px-3 text-sm font-medium text-muted-foreground">
+              {displayName}
+            </p>
+          </div>
+        </aside>
+      </div>
     </>
   );
 }

@@ -116,8 +116,8 @@ export default async function DashboardPage() {
           </h1>
         </header>
 
-        {/* Stat strip. */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Stat strip — compact 2×2 on mobile so it doesn't eat the screen. */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Posición"
             value={standing ? `#${standing.rank}` : "—"}
@@ -259,16 +259,18 @@ function StatCard({
 }) {
   return (
     <Card className={accent ? "border-primary/40 bg-primary/5" : undefined}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      <CardHeader className="p-4 pb-1 sm:p-6 sm:pb-2">
+        <CardTitle className="truncate text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:text-xs">
           {label}
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-4xl font-black tabular-nums tracking-tight">
+      <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+        <div className="text-2xl font-black tabular-nums tracking-tight sm:text-4xl">
           {value}
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{sub}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground sm:mt-1 sm:text-sm">
+          {sub}
+        </p>
       </CardContent>
     </Card>
   );
