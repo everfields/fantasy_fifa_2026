@@ -62,7 +62,7 @@ standings by `refresh_standings()`. Never hand-edit `points_awarded` — recalc 
 (third_place folds into final). Ties break by exact hits in the round, then split. Computed in the
 MANUAL recalc only (`pickRoundWinners` in `lib/scoring`).
 
-**Pot (money):** `entry_fee` 20 €/player; 2º gets the stake back; 15 € `pot_expenses` (domain)
+**Pot (money):** `entry_fee` 20 €/player; 2º gets the stake back; 20 € `pot_expenses` (domain + infra)
 reimbursed to the organizer; 1º takes the rest. Math in `lib/pot.ts`; `pot_amount` is derived
 (`entry_fee × paid`), never hand-entered. Players see only the two prizes on `/standings`
 (see `docs/decisions/0010-pot-payout-model.md`).

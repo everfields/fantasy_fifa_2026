@@ -158,7 +158,7 @@ export interface AppSettings {
   jokers_per_user: number; // DEPRECATED: jokers are now assigned per-match by the admin
   pot_amount: number; // total collected; kept in sync with entry_fee × paid players
   entry_fee: number; // € per player; the runner-up gets exactly this back
-  pot_expenses: number; // € deducted from the winner's prize (domain reimbursement)
+  pot_expenses: number; // € deducted from the winner's prize (domain + infra reimbursement)
   season_locked: boolean;
   live_polling_seconds: number;
 }
@@ -257,7 +257,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   jokers_per_user: 0,
   pot_amount: 0,
   entry_fee: 20,
-  pot_expenses: 15,
+  pot_expenses: 20,
   season_locked: false,
   live_polling_seconds: 60,
 };

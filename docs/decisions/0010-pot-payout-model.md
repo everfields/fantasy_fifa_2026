@@ -16,8 +16,8 @@ count changed.
 
 - **Entry fee:** 20 € per player (`app_settings.entry_fee`, admin-editable in `/admin/pot`).
 - **Runner-up (2º):** gets exactly their stake back (`entry_fee`).
-- **Expenses:** 15 € (`app_settings.pot_expenses`) deducted from the pot to reimburse the
-  organizer (el_que_nunca_hace_nada) for the resiporra.es domain cost.
+- **Expenses:** 20 € (`app_settings.pot_expenses`, domain + infra) deducted from the pot to reimburse the
+  organizer (el_que_nunca_hace_nada) for the resiporra.es domain and infra costs.
 - **Winner (1º):** takes everything else — `entry_fee × paid − entry_fee − pot_expenses`.
 - **`pot_amount` is now derived, not hand-entered:** kept in sync as `entry_fee × paid players`
   by the `setPaid` and `setPotConfig` server actions. The admin Resumen reads it as before.
@@ -44,7 +44,7 @@ count changed.
 
 ## Changes landed
 
-- **Contract:** `lib/types.ts` — `AppSettings.entry_fee` (20) and `AppSettings.pot_expenses` (15);
+- **Contract:** `lib/types.ts` — `AppSettings.entry_fee` (20) and `AppSettings.pot_expenses` (20);
   `pot_amount` documented as derived. New `lib/pot.ts` (`potBreakdown`, `formatEur`).
 - **DB:** none — additive keys in the existing `app_settings.settings` jsonb blob.
 - **Code:** `app/admin/pot/{page,actions}.tsx`, `components/admin/PotManager.tsx` (config card +

@@ -150,7 +150,7 @@ export function PotManager({
             ))}
             <div className="flex items-center justify-between rounded-lg border border-dashed border-border px-3 py-2 text-muted-foreground">
               <span className="text-sm">
-                Gastos dominio → el_que_nunca_hace_nada
+                Gastos (dominio + infra) → el_que_nunca_hace_nada
               </span>
               <span className="font-mono text-sm tabular-nums">
                 −{eur(pot.expenses)}
