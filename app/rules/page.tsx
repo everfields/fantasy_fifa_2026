@@ -18,6 +18,8 @@ export default async function RulesPage() {
   const profile = await requireUser();
   const settings = await getAppSettings();
   const s = settings.scoring;
+  // The goal-difference bonus is configurable; hide its card when disabled.
+  const showDiff = s.diff_bonus_enabled;
 
   return (
     <AppShell profile={profile}>
@@ -40,7 +42,11 @@ export default async function RulesPage() {
           <h2 className="text-xl font-black tracking-tight">
             Partido a partido
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            className={`grid gap-4 sm:grid-cols-2 ${
+              showDiff ? "lg:grid-cols-4" : "lg:grid-cols-3"
+            }`}
+          >
             <ExampleCard
               tone="emerald"
               label="Pleno"
@@ -49,21 +55,27 @@ export default async function RulesPage() {
               result="2 – 1"
               explain="Clavas el marcador exacto."
             />
-            <ExampleCard
-              tone="sky"
-              label="Signo + diferencia"
-              points={s.sign + s.diff_bonus}
-              pred="2 – 1"
-              result="3 – 2"
-              explain={`Aciertas quién gana (${s.sign}) y además la diferencia de goles (+${s.diff_bonus}).`}
-            />
+            {showDiff && (
+              <ExampleCard
+                tone="sky"
+                label="Signo + diferencia"
+                points={s.sign + s.diff_bonus}
+                pred="2 – 1"
+                result="3 – 2"
+                explain={`Aciertas quién gana (${s.sign}) y además la diferencia de goles (+${s.diff_bonus}).`}
+              />
+            )}
             <ExampleCard
               tone="amber"
-              label="Solo signo"
+              label="Signo"
               points={s.sign}
               pred="2 – 1"
               result="3 – 0"
-              explain="Aciertas quién gana (1/X/2), pero no la diferencia."
+              explain={
+                showDiff
+                  ? "Aciertas quién gana (1/X/2), pero no la diferencia."
+                  : "Aciertas quién gana o el empate (1/X/2), aunque falles el marcador."
+              }
             />
             <ExampleCard
               tone="zinc"
