@@ -19,6 +19,7 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | [0007](0007-data-safety-guardrails.md) | 2026-06-10 | Data-safety guardrails — predictions can never be lost | Accepted | Seed files abort if player data exists; `db/backup.sh` one-command backup; additive-only migrations post-launch; never delete/truncate `matches`/`teams`/`bonus_questions` (FK cascades wipe predictions); rules in `db/README.md` "Data safety" |
 | [0008](0008-dark-mode.md) | 2026-06-10 | Dark mode (class-based, next-themes) | Accepted | `next-themes` provider + nav toggle activates the existing `.dark` palette; system default, user override persisted; admin converted from hardcoded zinc to semantic tokens; rule: new UI uses theme tokens |
 | [0009](0009-live-results-llm-web-search.md) | 2026-06-10 | Live results via LLM web search + pg_cron scheduler | Accepted | Supersedes 0002: `LlmWebSearchProvider` (Haiku + web_search, two polls/match, FT-confirmation rule) feeds the dormant `update-results` route; Supabase pg_cron+pg_net every 15 min (Vault secrets); auto-scoring on finish; meta volante/bonus stay manual-recalc; Luis cron → 04:30 UTC |
+| [0010](0010-pot-payout-model.md) | 2026-06-10 | Pot payout model | Accepted | 20 € entry fee; 2º gets stake back; 15 € domain cost reimbursed to the organizer; 1º takes the rest; `pot_amount` derived (`entry_fee × paid`); players see only the two prizes on `/standings` |
 
 ## How to add a decision
 
