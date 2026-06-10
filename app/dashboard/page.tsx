@@ -213,7 +213,7 @@ export default async function DashboardPage() {
         {/* Luis de la Tracker — latest AI report. */}
         {trackerReport && (
           <section className="space-y-4">
-            <h2 className="text-xl font-black tracking-tight">El parte de Luis</h2>
+            <h2 className="text-xl font-black tracking-tight">AI-tracking system</h2>
             <LuisDashboardTeaser report={trackerReport} />
           </section>
         )}
@@ -232,7 +232,7 @@ export default async function DashboardPage() {
           />
           <QuickLink
             href="/tracker"
-            title="El parte de Luis"
+            title="AI-tracking system"
             desc="El análisis diario del míster."
           />
         </section>
