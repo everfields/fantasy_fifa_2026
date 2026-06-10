@@ -3,7 +3,7 @@ import Link from "next/link";
 import { login } from "../actions";
 import { AuthForm } from "../auth-form";
 
-export const metadata = { title: "Entrar · Mundial 26" };
+export const metadata = { title: "Entrar · Resiporra 26" };
 
 export default function LoginPage() {
   return (

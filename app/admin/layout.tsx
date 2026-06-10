@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/guards";
 
 import { AdminNav } from "@/components/admin/AdminNav";
 
-export const metadata = { title: "Admin · Mundial 26" };
+export const metadata = { title: "Admin · Resiporra 26" };
 export const dynamic = "force-dynamic";
 
 /**
@@ -35,7 +35,7 @@ export default async function AdminLayout({
             <p className="text-sm font-black tracking-tight">
               Panel de Control
             </p>
-            <p className="text-[11px] text-zinc-500">Mundial 26 · Admin</p>
+            <p className="text-[11px] text-zinc-500">Resiporra 26 · Admin</p>
           </div>
         </div>
 

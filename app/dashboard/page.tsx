@@ -17,7 +17,7 @@ import { LuisDashboardTeaser } from "@/components/LuisTracker";
 import { AppShell } from "../_components/shell";
 import { getTeamMap, matchdayLabel, matchdayKey, teamOr } from "../_lib/data";
 
-export const metadata = { title: "Inicio · Mundial 26" };
+export const metadata = { title: "Inicio · Resiporra 26" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {

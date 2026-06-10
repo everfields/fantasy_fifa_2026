@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "./_components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Mundial 2026 Pool",
+  title: "Resiporra · Mundial 2026",
   description: "Prediction pool for the FIFA World Cup 2026",
 };
 

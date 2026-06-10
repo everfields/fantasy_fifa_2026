@@ -53,7 +53,8 @@ export function Nav({
               <span aria-hidden className="text-lg">⚽</span>
             </span>
             <span className="text-base tracking-tight">
-              Mundial<span className="text-primary">26</span>
+              Resi<span className="text-primary">porra</span>
+              <span className="ml-1 align-top text-[0.7em] font-bold text-muted-foreground">26</span>
             </span>
           </Link>
 

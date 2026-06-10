@@ -7,7 +7,7 @@ import { LuisReportCard } from "@/components/LuisTracker";
 
 import { AppShell } from "../_components/shell";
 
-export const metadata = { title: "Luis de la Tracker · Mundial 26" };
+export const metadata = { title: "Luis de la Tracker · Resiporra 26" };
 export const dynamic = "force-dynamic";
 
 function reportDayLabel(date: string): string {

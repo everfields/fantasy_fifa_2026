@@ -3,7 +3,7 @@ import Link from "next/link";
 import { signup } from "../actions";
 import { AuthForm } from "../auth-form";
 
-export const metadata = { title: "Crear cuenta · Mundial 26" };
+export const metadata = { title: "Crear cuenta · Resiporra 26" };
 
 export default function SignupPage() {
   return (

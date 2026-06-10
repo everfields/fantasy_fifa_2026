@@ -23,11 +23,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 text-3xl backdrop-blur">
               ⚽
             </span>
-            Mundial 26
+            Resiporra<span className="font-extrabold text-primary-foreground/70">26</span>
           </div>
           <div className="space-y-4">
             <h1 className="max-w-md text-5xl font-black leading-[1.05] tracking-tight">
-              La porra del Mundial.
+              La porra de la Resi.
               <br />
               Demuestra quién manda.
             </h1>
@@ -37,7 +37,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
           <p className="text-sm text-primary-foreground/70">
-            FIFA World Cup 2026 · Grupo privado
+            Mundial 2026 · La Resi de Getafe · Grupo privado
           </p>
         </div>
       </div>

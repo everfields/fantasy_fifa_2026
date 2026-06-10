@@ -3,7 +3,7 @@
 //
 // Server component. Renders a persisted TrackerReport as a "rueda de prensa":
 // the míster's photo, his cocky headline, and the 5 key findings. Two surfaces:
-//   - <LuisReportCard>      full report (the /tracker page)
+//   - <LuisReportCard>      full report (the /tracker page) — big press photo
 //   - <LuisDashboardTeaser> compact card linking to /tracker (the dashboard)
 // ============================================================================
 
@@ -31,19 +31,23 @@ function reportDayLabel(date: string): string {
   });
 }
 
-function LuisAvatar({ className }: { className?: string }) {
+/**
+ * The míster's real photo. `className` controls size/shape (twMerge overrides
+ * the Avatar's default circle) — circular for the teaser, a framed rectangular
+ * "press photo" for the full report. AvatarImage is a plain <img>: it follows
+ * the Wikimedia redirect and falls back to "LF" if it ever fails to load.
+ */
+function LuisPortrait({ className }: { className?: string }) {
   return (
     <Avatar className={className}>
-      {/* AvatarImage is a plain <img> under the hood — follows the Wikimedia
-          redirect fine; falls back to "LF" if it ever fails to load. */}
-      <AvatarImage src={LUIS_PHOTO_URL} alt="Luis de la Tracker" />
+      <AvatarImage src={LUIS_PHOTO_URL} alt="Luis de la Fuente" />
       <AvatarFallback className="bg-foreground text-background">LF</AvatarFallback>
     </Avatar>
   );
 }
 
-/** The dark press-conference header strip shared by both surfaces. */
-function LuisHeader({
+/** Title + badge + tagline + date — the text block next to the photo. */
+function TitleBlock({
   report,
   compact,
 }: {
@@ -51,49 +55,51 @@ function LuisHeader({
   compact?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-4">
-      <LuisAvatar className={compact ? "h-12 w-12 ring-2 ring-primary/30" : "h-16 w-16 ring-2 ring-primary/40"} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className={compact ? "text-lg font-black tracking-tight" : "text-2xl font-black tracking-tight"}>
-            {TRACKER_TITLE}
-          </h2>
-          {report.status === "analysis_only" && (
-            <Badge variant="live">El míster calienta</Badge>
-          )}
-        </div>
-        <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-          {TRACKER_TAGLINE}
-        </p>
-        <p className="truncate text-xs capitalize text-muted-foreground">
-          {reportDayLabel(report.report_date)}
-        </p>
+    <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className={compact ? "text-lg font-black tracking-tight" : "text-2xl font-black tracking-tight"}>
+          {TRACKER_TITLE}
+        </h2>
+        {report.status === "analysis_only" && (
+          <Badge variant="live">El míster calienta</Badge>
+        )}
       </div>
+      <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+        {TRACKER_TAGLINE}
+      </p>
+      <p className="truncate text-xs capitalize text-muted-foreground">
+        {reportDayLabel(report.report_date)}
+      </p>
     </div>
   );
 }
 
-/** Full report — the /tracker page hero. */
+/** Full report — the /tracker page hero, fronted by a big press photo. */
 export function LuisReportCard({ report }: { report: TrackerReport }) {
   return (
     <Card className="overflow-hidden border-primary/30">
       <div className="bg-gradient-to-br from-foreground/[0.04] to-primary/[0.06] p-6">
-        <LuisHeader report={report} />
-        <blockquote className="mt-5 border-l-4 border-primary pl-4 text-xl font-bold italic leading-snug tracking-tight sm:text-2xl">
-          “{report.headline}”
-        </blockquote>
-        {report.analysis?.headlineStats?.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {report.analysis.headlineStats.map((s) => (
-              <span
-                key={s.label}
-                className="rounded-full bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border"
-              >
-                <span className="font-semibold text-foreground">{s.label}:</span> {s.value}
-              </span>
-            ))}
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <LuisPortrait className="h-40 w-32 shrink-0 self-center rounded-2xl shadow-md ring-2 ring-primary/40 sm:self-start" />
+          <div className="min-w-0 flex-1 space-y-4">
+            <TitleBlock report={report} />
+            <blockquote className="border-l-4 border-primary pl-4 text-xl font-bold italic leading-snug tracking-tight sm:text-2xl">
+              “{report.headline}”
+            </blockquote>
+            {report.analysis?.headlineStats?.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {report.analysis.headlineStats.map((s) => (
+                  <span
+                    key={s.label}
+                    className="rounded-full bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border"
+                  >
+                    <span className="font-semibold text-foreground">{s.label}:</span> {s.value}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <CardContent className="space-y-4 p-6">
@@ -122,7 +128,10 @@ export function LuisDashboardTeaser({ report }: { report: TrackerReport }) {
     <Link href="/tracker" className="group block">
       <Card className="h-full overflow-hidden border-primary/30 transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
         <div className="bg-gradient-to-br from-foreground/[0.04] to-primary/[0.06] p-5">
-          <LuisHeader report={report} compact />
+          <div className="flex items-center gap-4">
+            <LuisPortrait className="h-12 w-12 ring-2 ring-primary/30" />
+            <TitleBlock report={report} compact />
+          </div>
         </div>
         <CardContent className="space-y-3 p-5">
           <p className="line-clamp-3 text-base font-bold italic leading-snug">

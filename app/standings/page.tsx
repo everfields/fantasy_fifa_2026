@@ -14,7 +14,7 @@ import { PointsChart } from "@/components/PointsChart";
 import { AppShell } from "../_components/shell";
 import { matchdayKey } from "../_lib/data";
 
-export const metadata = { title: "Clasificación · Mundial 26" };
+export const metadata = { title: "Clasificación · Resiporra 26" };
 export const dynamic = "force-dynamic";
 
 type Series = {

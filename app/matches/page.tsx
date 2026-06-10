@@ -24,7 +24,7 @@ import {
 } from "../_lib/data";
 import { savePrediction } from "./actions";
 
-export const metadata = { title: "Partidos · Mundial 26" };
+export const metadata = { title: "Partidos · Resiporra 26" };
 export const dynamic = "force-dynamic";
 
 function groupByMatchday(matches: Match[]): [string, Match[]][] {

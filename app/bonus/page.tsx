@@ -16,7 +16,7 @@ import { AppShell } from "../_components/shell";
 import { BonusForm } from "./bonus-form";
 import { BonusBlocks, type BlockMeta } from "./bonus-blocks";
 
-export const metadata = { title: "Bonus · Mundial 26" };
+export const metadata = { title: "Bonus · Resiporra 26" };
 export const dynamic = "force-dynamic";
 
 const TYPE_LABEL: Record<BonusQuestion["type"], string> = {
