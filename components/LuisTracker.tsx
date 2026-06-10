@@ -57,14 +57,14 @@ function TitleBlock({
   return (
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className={compact ? "text-lg font-black tracking-tight" : "text-2xl font-black tracking-tight"}>
+        <h2 className={compact ? "text-lg font-black tracking-tight" : "text-xl font-black tracking-tight sm:text-2xl"}>
           {TRACKER_TITLE}
         </h2>
         {report.status === "analysis_only" && (
           <Badge variant="live">El míster calienta</Badge>
         )}
       </div>
-      <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary sm:text-sm">
         {TRACKER_TAGLINE}
       </p>
       <p className="truncate text-xs capitalize text-muted-foreground">
@@ -78,35 +78,36 @@ function TitleBlock({
 export function LuisReportCard({ report }: { report: TrackerReport }) {
   return (
     <Card className="overflow-hidden border-primary/30">
-      <div className="bg-gradient-to-br from-foreground/[0.04] to-primary/[0.06] p-6">
-        <div className="flex flex-col gap-5 sm:flex-row">
-          <LuisPortrait className="h-40 w-32 shrink-0 self-center rounded-2xl shadow-md ring-2 ring-primary/40 sm:self-start" />
-          <div className="min-w-0 flex-1 space-y-4">
+      <div className="bg-gradient-to-br from-foreground/[0.04] to-primary/[0.06] p-4 sm:p-6">
+        <div className="space-y-4">
+          {/* Compact header row everywhere: small press photo + title. */}
+          <div className="flex items-center gap-3 sm:gap-5">
+            <LuisPortrait className="h-16 w-14 shrink-0 rounded-xl shadow-md ring-2 ring-primary/40 sm:h-28 sm:w-24 sm:rounded-2xl" />
             <TitleBlock report={report} />
-            <blockquote className="border-l-4 border-primary pl-4 text-xl font-bold italic leading-snug tracking-tight sm:text-2xl">
-              “{report.headline}”
-            </blockquote>
-            {report.analysis?.headlineStats?.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {report.analysis.headlineStats.map((s) => (
-                  <span
-                    key={s.label}
-                    className="rounded-full bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border"
-                  >
-                    <span className="font-semibold text-foreground">{s.label}:</span> {s.value}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
+          <blockquote className="border-l-4 border-primary pl-3 text-lg font-bold italic leading-snug tracking-tight sm:pl-4 sm:text-2xl">
+            “{report.headline}”
+          </blockquote>
+          {report.analysis?.headlineStats?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              {report.analysis.headlineStats.map((s) => (
+                <span
+                  key={s.label}
+                  className="rounded-full bg-background/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-xs"
+                >
+                  <span className="font-semibold text-foreground">{s.label}:</span> {s.value}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <CardContent className="space-y-4 p-6">
+      <CardContent className="space-y-4 p-4 sm:p-6">
         <ol className="space-y-4">
           {report.findings.map((f, i) => (
-            <li key={i} className="flex gap-4">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-sm font-black text-primary">
+            <li key={i} className="flex gap-3 sm:gap-4">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-sm font-black text-primary sm:h-8 sm:w-8">
                 {i + 1}
               </span>
               <div className="space-y-1">

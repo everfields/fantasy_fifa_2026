@@ -1,20 +1,15 @@
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import type { Match, Prediction, StandingRow } from "@/lib/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import type { Match, Prediction, RoundAward, StandingRow } from "@/lib/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RankingTable } from "@/components/RankingTable";
+import { MetaVolanteBoard } from "@/components/MetaVolanteBoard";
 import { PointsChart } from "@/components/PointsChart";
 
 import { PotDialog } from "@/components/PotDialog";
 
 import { AppShell } from "../_components/shell";
-import { getPotPrizes, matchdayKey } from "../_lib/data";
+import { getAppSettings, getPotPrizes, matchdayKey } from "../_lib/data";
 
 export const metadata = { title: "Clasificación · Resiporra 26" };
 export const dynamic = "force-dynamic";
@@ -85,35 +80,39 @@ export default async function StandingsPage() {
   const profile = await requireUser();
   const supabase = createClient();
 
-  const [{ data: standingsData }, { data: matchData }, { data: predData }, pot] =
-    await Promise.all([
-      supabase
-        .from("standings_cache")
-        .select("*")
-        .order("rank", { ascending: true }),
-      supabase.from("matches").select("*"),
-      supabase.from("predictions").select("*"),
-      getPotPrizes(),
-    ]);
+  const [
+    { data: standingsData },
+    { data: matchData },
+    { data: predData },
+    { data: awardData },
+    pot,
+    settings,
+  ] = await Promise.all([
+    supabase
+      .from("standings_cache")
+      .select("*")
+      .order("rank", { ascending: true }),
+    supabase.from("matches").select("*"),
+    supabase.from("predictions").select("*"),
+    supabase.from("round_awards").select("*"),
+    getPotPrizes(),
+    getAppSettings(),
+  ]);
 
   const standings = (standingsData as StandingRow[] | null) ?? [];
   const matches = (matchData as Match[] | null) ?? [];
   const predictions = (predData as Prediction[] | null) ?? [];
+  const awards = (awardData as RoundAward[] | null) ?? [];
 
   const series = buildSeries(matches, predictions, standings);
 
   return (
     <AppShell profile={profile}>
-      <div className="space-y-8">
-        <header className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-              Clasificación
-            </h1>
-            <p className="text-muted-foreground">
-              Ranking global con desempates: puntos → aciertos exactos → bonus.
-            </p>
-          </div>
+      <div className="space-y-4 sm:space-y-6">
+        <header className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-black tracking-tight sm:text-4xl">
+            Clasificación
+          </h1>
           {pot.winnerPrize > 0 ? (
             <PotDialog
               winnerPrize={pot.winnerPrize}
@@ -122,42 +121,43 @@ export default async function StandingsPage() {
           ) : null}
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Ranking global</CardTitle>
-            <CardDescription>
-              {standings.length} jugador{standings.length === 1 ? "" : "es"} en
-              liza.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {standings.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                Aún no hay clasificación. ¡Que empiece el Mundial!
-              </p>
-            ) : (
-              <RankingTable rows={standings} currentUserId={profile.id} />
-            )}
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="general">
+          <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="meta">Meta volante</TabsTrigger>
+            <TabsTrigger value="evolucion">Evolución</TabsTrigger>
+          </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolución de puntos</CardTitle>
-            <CardDescription>
-              Puntos acumulados por jornada.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {series.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                Sin datos todavía.
+          <TabsContent value="general" className="mt-4">
+            <RankingTable rows={standings} currentUserId={profile.id} />
+            {standings.length > 0 && (
+              <p className="mt-2 px-1 text-[11px] text-muted-foreground">
+                Desempates: puntos → aciertos exactos → bonus.
               </p>
-            ) : (
-              <PointsChart series={series} />
             )}
-          </CardContent>
-        </Card>
+          </TabsContent>
+
+          <TabsContent value="meta" className="mt-4">
+            <MetaVolanteBoard
+              awards={awards}
+              standings={standings}
+              currentUserId={profile.id}
+              pointsPerRound={settings.meta_volante_points}
+            />
+          </TabsContent>
+
+          <TabsContent value="evolucion" className="mt-4">
+            {series.length === 0 ? (
+              <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+                Sin datos todavía.
+              </div>
+            ) : (
+              <div className="rounded-xl border bg-card p-3 sm:p-4">
+                <PointsChart series={series} />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );

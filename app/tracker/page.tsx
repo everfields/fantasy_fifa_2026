@@ -36,34 +36,36 @@ export default async function TrackerPage() {
 
   return (
     <AppShell profile={profile}>
-      <div className="space-y-8">
-        <header className="space-y-1">
-          <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-            {TRACKER_TAGLINE}
-          </p>
-          <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-            {TRACKER_TITLE}
-          </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            El míster repasa cada día la estrategia de la porra: aciertos, batacazos
-            y las quinielas que no le convencen. Sin pelos en la lengua.
-          </p>
-        </header>
-
+      <div className="space-y-5 sm:space-y-8">
+        {/* The report card is the page hero (it already carries title + tagline);
+            a separate page header would just duplicate it — especially on mobile. */}
         {!latest ? (
-          <Card>
-            <CardContent className="py-16 text-center text-muted-foreground">
-              El míster todavía no ha comparecido. Cuando se jueguen los primeros
-              partidos, aquí tendrás su parte. Paciencia.
-            </CardContent>
-          </Card>
+          <>
+            <header className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary sm:text-sm">
+                {TRACKER_TAGLINE}
+              </p>
+              <h1 className="text-2xl font-black tracking-tight sm:text-4xl">
+                {TRACKER_TITLE}
+              </h1>
+            </header>
+            <Card>
+              <CardContent className="px-6 py-16 text-center text-muted-foreground">
+                El míster todavía no ha comparecido. Cuando se jueguen los primeros
+                partidos, aquí tendrás su parte: aciertos, batacazos y las quinielas
+                que no le convencen. Paciencia.
+              </CardContent>
+            </Card>
+          </>
         ) : (
           <>
             <LuisReportCard report={latest} />
 
             {older.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-xl font-black tracking-tight">Partes anteriores</h2>
+                <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Partes anteriores
+                </h2>
                 <div className="space-y-2">
                   {older.map((r) => (
                     <details
