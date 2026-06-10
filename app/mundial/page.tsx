@@ -19,6 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { LocalKickoff } from "@/components/LocalKickoff";
+
 import { AppShell } from "../_components/shell";
 import { getTeamMap, teamOr } from "../_lib/data";
 
@@ -77,11 +79,19 @@ export default async function MundialPage() {
         {/* Group tables. */}
         <section className="space-y-4">
           <h2 className="text-xl font-black tracking-tight">Fase de grupos</h2>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from(tables.entries()).map(([group, rows]) => (
-              <GroupCard key={group} group={group} rows={rows} />
-            ))}
-          </div>
+          {tables.size === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Los grupos aparecerán cuando se cargue el calendario.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from(tables.entries()).map(([group, rows]) => (
+                <GroupCard key={group} group={group} rows={rows} />
+              ))}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
             Criterios FIFA: puntos → diferencia de goles → goles → enfrentamiento
             directo. Los empates que solo el fair play o el sorteo resuelven se
@@ -91,6 +101,7 @@ export default async function MundialPage() {
         </section>
 
         {/* Best thirds. */}
+        {thirds.length > 0 ? (
         <section className="space-y-4">
           <Card>
             <CardHeader>
@@ -129,10 +140,19 @@ export default async function MundialPage() {
             </CardContent>
           </Card>
         </section>
+        ) : null}
 
         {/* Knockout bracket. */}
         <section className="space-y-4">
           <h2 className="text-xl font-black tracking-tight">Cuadro final</h2>
+          {knockout.size === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                El cuadro aparecerá cuando se cargue el calendario de
+                eliminatorias.
+              </CardContent>
+            </Card>
+          ) : null}
           <div className="grid gap-4 lg:grid-cols-2">
             {KNOCKOUT_STAGES.map(({ stage, label }) => {
               const stageMatches = knockout.get(stage) ?? [];
@@ -282,12 +302,11 @@ function BracketMatch({
             <span className={cn(awayWins && "font-bold")}>{match.away_score}</span>
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">
-            {new Date(match.kickoff_at).toLocaleDateString("es-ES", {
-              day: "2-digit",
-              month: "short",
-            })}
-          </span>
+          <LocalKickoff
+            iso={match.kickoff_at}
+            options={{ day: "2-digit", month: "short" }}
+            className="text-xs text-muted-foreground"
+          />
         )}
       </span>
       {match.status === "live" ? <Badge>En vivo</Badge> : null}

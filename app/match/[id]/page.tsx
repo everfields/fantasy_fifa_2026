@@ -18,6 +18,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { Countdown } from "@/components/Countdown";
+import { LocalKickoff } from "@/components/LocalKickoff";
 import { MatchCard } from "@/components/MatchCard";
 
 import { AppShell } from "../../_components/shell";
@@ -184,10 +185,10 @@ export default async function MatchDetailPage({
                     </div>
                   )}
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {new Date(match.kickoff_at).toLocaleString("es-ES", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    <LocalKickoff
+                      iso={match.kickoff_at}
+                      options={{ dateStyle: "medium", timeStyle: "short" }}
+                    />
                   </p>
                 </div>
                 <TeamSide team={away} fallback="Visitante" align="start" />

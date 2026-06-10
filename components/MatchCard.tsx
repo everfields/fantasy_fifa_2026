@@ -2,6 +2,7 @@ import * as React from "react";
 
 import type { Match, Prediction, Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { LocalKickoff } from "@/components/LocalKickoff";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -20,17 +21,13 @@ const STAGE_LABELS: Record<Match["stage"], string> = {
   final: "Final",
 };
 
-function formatKickoff(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
-}
+const KICKOFF_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+};
 
 function TeamColumn({
   team,
@@ -88,7 +85,7 @@ function StatusBadge({ match }: { match: Match }) {
   }
   return (
     <Badge variant="outline" className="font-medium text-muted-foreground">
-      {formatKickoff(match.kickoff_at)}
+      <LocalKickoff iso={match.kickoff_at} options={KICKOFF_FORMAT} />
     </Badge>
   );
 }

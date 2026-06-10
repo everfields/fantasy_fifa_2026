@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import type { Match, Prediction } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { LocalKickoff } from "@/components/LocalKickoff";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -18,17 +19,13 @@ export interface JokerItem {
   prediction: Prediction | null;
 }
 
-function formatKickoff(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("es-ES", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
-}
+const KICKOFF_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+};
 
 function MultiplierBadge({ multiplier }: { multiplier: number }) {
   return (
@@ -112,7 +109,7 @@ function JokerRow({
               En juego
             </span>
           ) : (
-            formatKickoff(match.kickoff_at)
+            <LocalKickoff iso={match.kickoff_at} options={KICKOFF_FORMAT} />
           )}
         </span>
         <span className="text-muted-foreground/40">·</span>
