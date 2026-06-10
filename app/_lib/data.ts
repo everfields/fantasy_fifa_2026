@@ -7,6 +7,7 @@
 // `kickoff_at` (the natural World Cup grouping) — see `matchdayKey`.
 // ============================================================================
 
+import { potBreakdown, type PotBreakdown } from "@/lib/pot";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_APP_SETTINGS, type AppSettings, type Team } from "@/lib/types";
 
@@ -30,10 +31,32 @@ export async function getAppSettings(): Promise<AppSettings> {
       s.meta_volante_points ?? DEFAULT_APP_SETTINGS.meta_volante_points,
     jokers_per_user: s.jokers_per_user ?? DEFAULT_APP_SETTINGS.jokers_per_user,
     pot_amount: s.pot_amount ?? DEFAULT_APP_SETTINGS.pot_amount,
+    entry_fee: s.entry_fee ?? DEFAULT_APP_SETTINGS.entry_fee,
+    pot_expenses: s.pot_expenses ?? DEFAULT_APP_SETTINGS.pot_expenses,
     season_locked: s.season_locked ?? DEFAULT_APP_SETTINGS.season_locked,
     live_polling_seconds:
       s.live_polling_seconds ?? DEFAULT_APP_SETTINGS.live_polling_seconds,
   };
+}
+
+/**
+ * Player-facing pot figures. Computed from the settings blob (entry fee,
+ * expenses, paid players); players only ever see the two prizes.
+ */
+export async function getPotPrizes(): Promise<PotBreakdown> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("app_settings")
+    .select("settings")
+    .single();
+  const s = (data?.settings ?? {}) as Partial<AppSettings> & {
+    paid_user_ids?: string[];
+  };
+  return potBreakdown({
+    entryFee: s.entry_fee ?? DEFAULT_APP_SETTINGS.entry_fee,
+    expenses: s.pot_expenses ?? DEFAULT_APP_SETTINGS.pot_expenses,
+    paidCount: Array.isArray(s.paid_user_ids) ? s.paid_user_ids.length : 0,
+  });
 }
 
 /** Fetch all teams as an id→Team map (placeholders included). */

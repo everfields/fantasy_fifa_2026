@@ -63,6 +63,9 @@ function shapeSettings(raw: Record<string, unknown>): AppSettingsStored {
     jokers_per_user:
       (raw.jokers_per_user as number) ?? DEFAULT_APP_SETTINGS.jokers_per_user,
     pot_amount: (raw.pot_amount as number) ?? DEFAULT_APP_SETTINGS.pot_amount,
+    entry_fee: (raw.entry_fee as number) ?? DEFAULT_APP_SETTINGS.entry_fee,
+    pot_expenses:
+      (raw.pot_expenses as number) ?? DEFAULT_APP_SETTINGS.pot_expenses,
     season_locked:
       (raw.season_locked as boolean) ?? DEFAULT_APP_SETTINGS.season_locked,
     live_polling_seconds:

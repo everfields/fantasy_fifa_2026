@@ -11,8 +11,10 @@ import {
 import { RankingTable } from "@/components/RankingTable";
 import { PointsChart } from "@/components/PointsChart";
 
+import { formatEur } from "@/lib/pot";
+
 import { AppShell } from "../_components/shell";
-import { matchdayKey } from "../_lib/data";
+import { getPotPrizes, matchdayKey } from "../_lib/data";
 
 export const metadata = { title: "Clasificación · Resiporra 26" };
 export const dynamic = "force-dynamic";
@@ -83,7 +85,7 @@ export default async function StandingsPage() {
   const profile = await requireUser();
   const supabase = createClient();
 
-  const [{ data: standingsData }, { data: matchData }, { data: predData }] =
+  const [{ data: standingsData }, { data: matchData }, { data: predData }, pot] =
     await Promise.all([
       supabase
         .from("standings_cache")
@@ -91,6 +93,7 @@ export default async function StandingsPage() {
         .order("rank", { ascending: true }),
       supabase.from("matches").select("*"),
       supabase.from("predictions").select("*"),
+      getPotPrizes(),
     ]);
 
   const standings = (standingsData as StandingRow[] | null) ?? [];
@@ -110,6 +113,27 @@ export default async function StandingsPage() {
             Ranking global con desempates: puntos → aciertos exactos → bonus.
           </p>
         </header>
+
+        {pot.winnerPrize > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>🏆 Bote para el ganador</CardDescription>
+                <CardTitle className="text-3xl font-black tabular-nums">
+                  {formatEur(pot.winnerPrize)}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>🥈 Premio para el segundo</CardDescription>
+                <CardTitle className="text-3xl font-black tabular-nums">
+                  {formatEur(pot.runnerUpPrize)}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        ) : null}
 
         <Card>
           <CardHeader>

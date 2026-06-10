@@ -46,10 +46,11 @@ export default async function AdminPotPage() {
       <PageHeader
         eyebrow="Dinero"
         title="Bote y pagos"
-        description="Define el bote, controla quién ha pagado y consulta el reparto sugerido según la clasificación actual."
+        description="Controla quién ha pagado la cuota y consulta el reparto: el 2º recupera su apuesta y el 1º se lleva el resto tras gastos."
       />
       <PotManager
-        potAmount={settings.pot_amount}
+        entryFee={settings.entry_fee}
+        potExpenses={settings.pot_expenses}
         players={players}
         topThree={topThree}
       />

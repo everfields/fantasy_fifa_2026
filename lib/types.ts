@@ -156,7 +156,9 @@ export interface AppSettings {
   group_winner_points: number; // points per auto-generated group-winner bonus question
   meta_volante_points: number; // round-champion (meta volante) award
   jokers_per_user: number; // DEPRECATED: jokers are now assigned per-match by the admin
-  pot_amount: number;
+  pot_amount: number; // total collected; kept in sync with entry_fee × paid players
+  entry_fee: number; // € per player; the runner-up gets exactly this back
+  pot_expenses: number; // € deducted from the winner's prize (domain reimbursement)
   season_locked: boolean;
   live_polling_seconds: number;
 }
@@ -254,6 +256,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   meta_volante_points: 100,
   jokers_per_user: 0,
   pot_amount: 0,
+  entry_fee: 20,
+  pot_expenses: 15,
   season_locked: false,
   live_polling_seconds: 60,
 };
