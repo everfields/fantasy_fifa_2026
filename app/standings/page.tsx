@@ -112,28 +112,14 @@ export default async function StandingsPage() {
           <p className="text-muted-foreground">
             Ranking global con desempates: puntos → aciertos exactos → bonus.
           </p>
+          {pot.winnerPrize > 0 ? (
+            <p className="text-sm text-muted-foreground/80">
+              Aquí se juega por el orgullo — pero el ganador se lleva{" "}
+              {formatEur(pot.winnerPrize)} y el segundo{" "}
+              {formatEur(pot.runnerUpPrize)}.
+            </p>
+          ) : null}
         </header>
-
-        {pot.winnerPrize > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>🏆 Bote para el ganador</CardDescription>
-                <CardTitle className="text-3xl font-black tabular-nums">
-                  {formatEur(pot.winnerPrize)}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>🥈 Premio para el segundo</CardDescription>
-                <CardTitle className="text-3xl font-black tabular-nums">
-                  {formatEur(pot.runnerUpPrize)}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-        ) : null}
 
         <Card>
           <CardHeader>
