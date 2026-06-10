@@ -11,7 +11,7 @@ import {
 import { RankingTable } from "@/components/RankingTable";
 import { PointsChart } from "@/components/PointsChart";
 
-import { formatEur } from "@/lib/pot";
+import { PotDialog } from "@/components/PotDialog";
 
 import { AppShell } from "../_components/shell";
 import { getPotPrizes, matchdayKey } from "../_lib/data";
@@ -105,19 +105,20 @@ export default async function StandingsPage() {
   return (
     <AppShell profile={profile}>
       <div className="space-y-8">
-        <header className="space-y-1">
-          <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-            Clasificación
-          </h1>
-          <p className="text-muted-foreground">
-            Ranking global con desempates: puntos → aciertos exactos → bonus.
-          </p>
-          {pot.winnerPrize > 0 ? (
-            <p className="text-sm text-muted-foreground/80">
-              Aquí se juega por el orgullo — pero el ganador se lleva{" "}
-              {formatEur(pot.winnerPrize)} y el segundo{" "}
-              {formatEur(pot.runnerUpPrize)}.
+        <header className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+              Clasificación
+            </h1>
+            <p className="text-muted-foreground">
+              Ranking global con desempates: puntos → aciertos exactos → bonus.
             </p>
+          </div>
+          {pot.winnerPrize > 0 ? (
+            <PotDialog
+              winnerPrize={pot.winnerPrize}
+              runnerUpPrize={pot.runnerUpPrize}
+            />
           ) : null}
         </header>
 
