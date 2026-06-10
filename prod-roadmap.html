@@ -71,7 +71,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>⚽ Mundial 2026 Pool — Road to PROD</h1>
+    <h1>⚽ Resiporra · Mundial 2026 — Road to PROD</h1>
     <p>Qué falta para estar en producción + backlog de features. Los checks se guardan en este navegador.</p>
     <div class="bar"><span id="prog"></span></div>
     <div class="bar-label"><span id="progtxt">0 / 0</span> tareas completadas</div>
@@ -90,11 +90,31 @@
     <ol class="steps">
       <li class="done"><b>Crear proyecto Supabase</b> en <a href="https://supabase.com" target="_blank">supabase.com</a> (free tier vale). Copia <code>Project URL</code>, <code>anon key</code> y <code>service_role key</code> desde Settings → API. <i>(hecho — claves en <code>.env.local</code>)</i></li>
       <li class="done"><b>Aplicar la base de datos</b>: ejecuta <code>db/migrations/0001→0003</code> y luego <code>db/seed/seed.sql</code> contra el proyecto (ver <code>db/README.md</code> o el skill <code>/run-porra</code>). <i>(hecho — 48 equipos, 104 partidos, app_settings cargados)</i></li>
-      <li class="done"><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <b>Verifica</b> que el Mundial 2026 está cubierto en tu plan, el código de competición y los rate limits. <i>(hecho — token válido, competición <code>WC</code> en el plan; ⚠️ pero <code>/competitions/WC/matches</code> está vacío todavía)</i></li>
+      <li class="done"><b>Token del proveedor de fútbol</b>: regístrate en <a href="https://football-data.org" target="_blank">football-data.org</a> y consigue el API token. <i>(superado — ningún proveedor gratuito cubre el WC2026; al final los resultados llegan vía <code>LlmWebSearchProvider</code>, ver ADR-0009 abajo)</i></li>
       <li class="done"><b>Datos reales del Mundial</b>: fixture oficial FIFA (sorteo 5 dic 2025) cargado — 48 equipos en 12 grupos + 104 partidos con sedes y horarios reales, eliminatorias como TBD. <code>db/seed/teams.csv</code>, <code>matches.csv</code> y <code>seed_dashboard.sql</code> regenerados y aplicados a Supabase. <i>(hecho — verificado vs FIFA/MLS/NBC; inaugural México–Sudáfrica 11-jun)</i></li>
-      <li class="done"><b>Deploy en Vercel</b>: proyecto <code>carlos-andujar/fantasy_fifa_2026</code> desplegado en producción, repo de GitHub conectado (auto-deploy en cada push), 6 variables de entorno cargadas. Plan Hobby → cron diario. <i>(hecho — <a href="https://fantasyfifa2026.vercel.app" target="_blank">fantasyfifa2026.vercel.app</a>)</i></li>
+      <li class="done"><b>Deploy en Vercel</b>: proyecto <code>carlos-andujar/fantasy_fifa_2026</code> desplegado en producción, repo de GitHub conectado (auto-deploy en cada push), 7 variables de entorno cargadas (incl. <code>ANTHROPIC_API_KEY</code> y <code>FOOTBALL_PROVIDER=llm</code>). Plan Hobby → cron diario de Luis; el poll de resultados lo dispara Supabase pg_cron. <i>(hecho — <a href="https://resiporra.es" target="_blank">resiporra.es</a> / fantasyfifa2026.vercel.app)</i></li>
       <li class="done"><b>Crear tu usuario admin</b>: regístrate en <code>/signup</code>, luego en SQL: <code>update profiles set role='admin' where display_name='TU_NOMBRE';</code> <i>(hecho — admin activo)</i></li>
-      <li class="done"><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, jokers por usuario, bote (pot) y dejar <code>season_locked=false</code> al abrir. <i>(hecho — exacto 5 / signo 2 / dif +1, joker ×3, 3 jokers/usuario, temporada abierta)</i></li>
+      <li class="done"><b>Configurar reglas</b> en <code>/admin/scoring</code>: puntos, bote (pot) y dejar <code>season_locked=false</code> al abrir. <i>(hecho y actualizado por ADR-0001 — exacto 50 / signo 20 / dif +10, joker ×3 <b>asignado por el admin por partido</b>, meta volante 100)</i></li>
+      <li><b>Config admin de arranque</b>: marcar los 3 jokers de la jornada 1 en <code>/admin/matches</code>, generar las preguntas de campeón de grupo en <code>/admin/bonus</code> y correr un recalc baseline en <code>/admin/recalc</code>.</li>
+      <li class="done"><b>Auth lista para invitar</b>: Site URL = resiporra.es, redirect URLs configuradas y confirmación de email desactivada para el grupo privado. <i>(hecho 10-jun)</i> Solo queda compartir el enlace de <code>/signup</code> por WhatsApp.</li>
+    </ol>
+  </section>
+
+  <!-- ============ DECISIONES DESDE EL v0 ============ -->
+  <section>
+    <h2>📜 Lo que cambió desde este roadmap (ADRs) <span class="tag block">hecho</span></h2>
+    <p class="sub">Este roadmap era la foto del 9-jun. Todo esto se decidió e implementó después — detalle completo en <code>docs/decisions/</code>.</p>
+    <ol class="steps">
+      <li class="done"><b>ADR-0001 · Scoring overhaul</b> — puntos ×10 (50/20/+10), jokers asignados por el admin por partido (no por usuario), meta volante (campeón de ronda, 100 pts), bonus de campeón de grupo, tipo de bonus <code>text</code>.</li>
+      <li class="done"><b>ADR-0002 · Resultados manuales</b> — se quitó el poller externo; el admin metía marcadores a mano. <i>Superseded por ADR-0009.</i></li>
+      <li class="done"><b>ADR-0003 · "Luis de la Tracker"</b> — parte diario IA (análisis puro determinista + verbalización Anthropic en persona del míster) en <code>/tracker</code> + teaser en dashboard. Cron diario Vercel 04:30 UTC (verificado en prod).</li>
+      <li class="done"><b>ADR-0004 · Herramientas admin</b> — borrar preguntas bonus, <code>point_adjustments</code> (± puntos con motivo, sumados al standing), corrección manual de bonus <code>text</code> por respuesta.</li>
+      <li class="done"><b>ADR-0005 · Chat eliminado</b> — el grupo ya chatea en WhatsApp; fuera placeholder, nav y backlog de Realtime.</li>
+      <li class="done"><b>ADR-0006 · Bonus en 3 bloques</b> — categorías <code>group_winner</code> / <code>spain_scorer</code> / <code>tournament</code> con secciones plegables en <code>/bonus</code> y <code>/admin/bonus</code>; seed de goleador-España, pichichi y Curazao.</li>
+      <li class="done"><b>ADR-0007 · Guardarraíles de datos</b> — las predicciones no se pierden jamás: seeds que se auto-abortan, <code>db/backup.sh</code>, migraciones solo aditivas, prohibido delete/truncate en tablas con cascade a predicciones.</li>
+      <li class="done"><b>ADR-0008 · Dark mode</b> — <code>next-themes</code> con toggle en nav, tokens semánticos en toda la UI (admin incluido).</li>
+      <li class="done"><b>ADR-0009 · Resultados en vivo vía LLM</b> — <code>LlmWebSearchProvider</code> (Haiku + web_search) alimenta <code>/api/cron/update-results</code>, disparado cada 15 min por Supabase pg_cron+pg_net (secretos en Vault). Dos polls por partido (HT y FT), <code>finished</code> solo con confirmación explícita, re-puntuación automática al acabar. <b>Activado y verificado en prod el 10-jun</b> (<code>{"ok":true,"provider":"llmWebSearch"}</code>). La entrada manual del admin sigue siendo la autoridad final.</li>
+      <li class="done"><b>Rebrand</b> — "Resiporra · Mundial 2026", dominio <a href="https://resiporra.es" target="_blank">resiporra.es</a>.</li>
     </ol>
   </section>
 
@@ -115,48 +135,48 @@
   <!-- ============ BACKLOG ============ -->
   <section>
     <h2>🌅 Backlog / features en el horizonte <span class="tag soon">nice-to-have</span></h2>
-    <p class="sub">Fases 6–7 del plan + ideas. Nada de esto bloquea el lanzamiento.</p>
+    <p class="sub">Ideas que no bloquean nada. Del backlog original ya cayeron: live scoring (hecho, ADR-0009), chat (descartado, ADR-0005), mini-liga por jornada (hecho como meta volante, ADR-0001) y modo Director Técnico (sin proveedor viable).</p>
     <div id="list-soon"></div>
   </section>
 
   <footer>
     <button class="reset" onclick="resetAll()">↺ Reiniciar todos los checks</button>
-    <p>Mundial 2026 Pool · actualizado 9 jun 2026 · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
+    <p>Resiporra · Mundial 2026 · actualizado 10 jun 2026 (post ADR-0009) · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
   </footer>
 </div>
 
 <script>
 const DATA = {
   block: [
-    ["migration-0004", "Aplicar migración 0004 (overhaul de scoring)", "HECHO ✓ — <code>db/migrations/0004_scoring_overhaul.sql</code> aplicada a Supabase (jokers por partido, puntos ×10 → exacto 50/signo 20/dif +10/joker ×3, meta volante, campeón de grupo, bonus 'text', matchday tagueado, app_settings migrado a los nuevos defaults). PENDIENTE de config admin: marcar partidos joker en /admin/matches, generar preguntas de campeón de grupo en /admin/bonus, y correr /admin/recalc. Detalle en <code>docs/decisions/0001-scoring-overhaul.md</code>.", "p1"],
-    ["env-vars", "Variables de entorno en Vercel", "HECHO ✓ — 6 variables en Production+Development: las 3 de Supabase, API_FOOTBALL_KEY, FOOTBALL_PROVIDER y CRON_SECRET (mismo valor que .env.local).", "p1"],
-    ["cron-middleware", "Bug: middleware redirige el cron", "El matcher del middleware cubre /api/cron, así que devuelve 307 a login en vez de ejecutar el cron. No urge (cron diario + resultados a mano), pero hay que excluir /api antes de depender del auto-sync.", "p2"],
-    ["verify-provider", "Resultados en vivo (proveedor)", "Fixture ya cargado a mano ✓ (no dependía del proveedor). PENDIENTE solo los RESULTADOS en vivo: football-data.org da count:0 para el WC, y el free de API-Football NO cubre la season 2026 (solo 2022-24). Opciones: pagar API-Football (league=1, season=2026 ya cuadra en el código) o meter marcadores a mano en /admin/matches durante el torneo.", "p1"],
-    ["rls-review", "Revisar y probar las RLS", "El núcleo de seguridad: que cada uno solo vea/edite sus predicciones y solo antes del kickoff.", "p1"],
-    ["auth-config", "Config de Auth en Supabase", "Confirmación de email, redirect URLs y SMTP — o desactivar confirmación para el grupo privado.", "p2"],
-    ["lock-test", "Probar el lock al kickoff", "Validar que no se aceptan predicciones tras locks_at (servidor + RLS), nunca confiar en el cliente.", "p1"],
-    ["cron-idempotent", "Probar idempotencia del cron", "Re-ejecutar update-results no debe re-puntuar ni duplicar puntos.", "p2"],
+    ["migration-0004", "Aplicar migración 0004 (overhaul de scoring)", "HECHO ✓ — aplicada a Supabase; detalle en <code>docs/decisions/0001-scoring-overhaul.md</code>. Las migraciones 0005–0008 (ajustes, categorías bonus, pg_cron) también están aplicadas en prod.", "p1"],
+    ["admin-config", "Config admin de arranque (jokers MD1 + campeones de grupo + recalc)", "Antes del pitido inicial: marcar los 3 jokers de la jornada 1 en /admin/matches, pulsar 'generar preguntas de campeón de grupo' en /admin/bonus y correr un recalc baseline en /admin/recalc.", "p1"],
+    ["env-vars", "Variables de entorno en Vercel", "HECHO ✓ — 7 variables en Production: las 3 de Supabase, API_FOOTBALL_KEY, ANTHROPIC_API_KEY, CRON_SECRET (corregido 10-jun, ya coincide con .env.local) y FOOTBALL_PROVIDER=llm (cambiado y redeploy 10-jun).", "p1"],
+    ["cron-middleware", "Bug: middleware redirige el cron", "HECHO ✓ — el matcher excluye /api; los crons llegan a su propia auth (CRON_SECRET) sin 307.", "p2"],
+    ["verify-provider", "Resultados en vivo (proveedor)", "HECHO ✓ — resuelto con ADR-0009: LlmWebSearchProvider + pg_cron cada 15 min. Verificado en prod el 10-jun: el endpoint responde {\"ok\":true,\"provider\":\"llmWebSearch\"}. Fallback: entrada manual en /admin/matches sigue mandando.", "p1"],
+    ["rls-review", "Revisar y probar las RLS", "HECHO ✓ (10-jun, batería contra PROD con usuario desechable): anónimo no lee predicciones; cada user solo ve/edita las suyas (update ajeno → 0 filas); auto-promoción a admin bloqueada (42501). Usuario de prueba borrado tras el test, datos reales intactos.", "p1"],
+    ["auth-config", "Config de Auth en Supabase", "HECHO ✓ (10-jun, vía Management API) — Site URL = https://resiporra.es (estaba en localhost:3000), allow-list con resiporra.es + vercel.app + localhost, y confirmación de email DESACTIVADA (signup instantáneo, sin depender del SMTP limitado de Supabase).", "p1"],
+    ["lock-test", "Probar el lock al kickoff", "HECHO ✓ (10-jun) — con locks_at en pasado la RLS rechaza el insert (42501); antes del lock, insert/update propios funcionan. Probado en PROD backdateando temporalmente la final y restaurando su locks_at exacto.", "p1"],
+    ["cron-idempotent", "Probar idempotencia del cron", "Cubierto por tests unitarios (134 ✓) y diseño de ADR-0009; queda verlo con un partido real: dos polls seguidos no deben re-puntuar.", "p3"],
     ["gitattributes", "Añadir .gitattributes (LF)", "Fijar 'text=auto eol=lf' para evitar el ruido CRLF en Windows.", "p3"],
-    ["seed-real", "Fixture real cargado en la BD", "HECHO ✓ — 48 equipos + 104 partidos oficiales aplicados a Supabase y guardados en db/seed (teams.csv, matches.csv, seed_dashboard.sql). Si más adelante creas un proyecto PROD aparte, re-aplica el seed allí.", "p1"],
+    ["seed-real", "Fixture real cargado en la BD", "HECHO ✓ — 48 equipos + 104 partidos oficiales aplicados a Supabase y guardados en db/seed (teams.csv, matches.csv, seed_dashboard.sql).", "p1"],
+    ["backup-rhythm", "Backup antes de cada SQL en prod", "Hábito operativo (ADR-0007): bash db/backup.sh antes de tocar la BD. Último backup: full_20260610T110251Z.sql.", "p2"],
   ],
   check: [
-    ["mobile", "Pase responsive / móvil", "Fase 8 — la mayoría jugará desde el móvil.", "p2"],
-    ["empty-states", "Estados vacíos y de error", "Qué se ve sin predicciones, sin partidos, sin conexión al proveedor.", "p2"],
+    ["mobile", "Pase responsive / móvil", "Fase 8 — la mayoría jugará desde el móvil. Probar también el dark mode (ADR-0008) en móvil.", "p2"],
+    ["empty-states", "Estados vacíos y de error", "Qué se ve sin predicciones, sin partidos, sin parte de Luis (hoy responde 'skipped' hasta que haya partidos acabados).", "p2"],
     ["projected-points", "Validar puntos proyectados", "Que el cálculo en vivo coincida con el motor de scoring.", "p2"],
-    ["recalc-preview", "Probar recalc manual (preview→confirm)", "Cambiar una regla y comprobar el preview 'afecta a X predicciones'.", "p2"],
+    ["recalc-preview", "Probar recalc manual (preview→confirm)", "Cambiar una regla y comprobar el preview 'afecta a X predicciones'. El recalc también puntúa bonus y meta volante (ADR-0001/0004).", "p2"],
+    ["first-match-watch", "Vigilar el primer partido en vivo", "11-jun México–Sudáfrica: comprobar que el poll de HT y FT entra solo, que 'finished' solo llega con confirmación de final, y que re-puntúa al acabar.", "p1"],
     ["timezones", "Zonas horarias de kickoff", "Horarios del Mundial vs hora local de los jugadores — mostrar bien el countdown.", "p3"],
-    ["lint-build", "CI: typecheck + tests + build", "Que npm run build y los tests de scoring corran en cada push (GitHub Action).", "p3"],
+    ["lint-build", "CI: typecheck + tests + build", "Que npm run build y los tests corran en cada push (GitHub Action). Hoy se corre a mano (134 tests ✓ el 10-jun).", "p3"],
   ],
   soon: [
-    ["live-scoring", "Live scoring + puntos en tiempo real", "Marcador en vivo y puntos proyectados durante los partidos (Supabase Realtime). Fase 6.", "p2"],
-    ["chat-realtime", "Cablear el chat / shoutbox", "Hoy es un placeholder; falta tabla messages + Realtime.", "p3"],
     ["badges", "Rachas y badges", "'3 exactos seguidos', 'rey de la jornada'.", "p3"],
-    ["mini-league", "Mini-liga por jornada", "Quién gana cada jornada, no solo el global.", "p3"],
     ["reminders", "Recordatorios de lock", "Push/email antes de que cierre cada jornada.", "p3"],
-    ["director-tecnico", "Modo 'Director Técnico'", "Predecir alineación o goleador — necesita API-Football (proveedor de pago).", "p3"],
     ["h2h", "Historial head-to-head", "Cara a cara entre dos amigos.", "p3"],
     ["pot-payout", "Reparto automático del bote", "Cálculo y split sugerido de premios.", "p3"],
     ["leagues", "Ligas / grupos opcionales", "Sub-grupos dentro del pool.", "p3"],
+    ["sdk-cast", "Quitar el cast de web_search al actualizar el SDK", "lib/providers/llmWebSearch.ts lleva un cast de tipo porque el SDK de Anthropic instalado aún no trae el discriminante web_search_20250305.", "p3"],
   ],
 };
 

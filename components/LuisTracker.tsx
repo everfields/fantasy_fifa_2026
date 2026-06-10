@@ -34,8 +34,8 @@ function reportDayLabel(date: string): string {
 /**
  * The míster's real photo. `className` controls size/shape (twMerge overrides
  * the Avatar's default circle) — circular for the teaser, a framed rectangular
- * "press photo" for the full report. AvatarImage is a plain <img>: it follows
- * the Wikimedia redirect and falls back to "LF" if it ever fails to load.
+ * "press photo" for the full report. AvatarImage is a plain <img> serving the
+ * self-hosted photo from public/; it falls back to "LF" if it ever fails to load.
  */
 function LuisPortrait({ className }: { className?: string }) {
   return (

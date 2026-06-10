@@ -10,13 +10,13 @@ export const TRACKER_TITLE = "Luis de la Tracker";
 export const TRACKER_TAGLINE = "El parte del míster";
 
 /**
- * Photo of Luis de la Fuente (Spain NT manager), Wikimedia Commons
- * (`Special:FilePath` stable redirect; CC-licensed — attribution shown in UI).
+ * Photo of Luis de la Fuente (Spain NT manager), self-hosted in `public/`
+ * (sourced from Wikimedia Commons, CC-licensed — attribution stays in
+ * LUIS_PHOTO_CREDIT and is shown in the UI; the licence requires it).
  * Override with NEXT_PUBLIC_LUIS_PHOTO_URL to swap the image without a deploy.
  */
 export const LUIS_PHOTO_URL =
-  process.env.NEXT_PUBLIC_LUIS_PHOTO_URL ??
-  "https://commons.wikimedia.org/wiki/Special:FilePath/Luis_de_la_Fuente_Castillo_-_2023_05_06_Final_de_la_Copa_del_Rey_0001_(cropped).jpg?width=512";
+  process.env.NEXT_PUBLIC_LUIS_PHOTO_URL ?? "/luis-de-la-fuente.jpg";
 
 /** Attribution shown next to the photo (Wikimedia Commons requires it). */
 export const LUIS_PHOTO_CREDIT = "Foto: Wikimedia Commons (CC) — uso paródico";

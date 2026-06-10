@@ -13,9 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
 import { MatchCard } from "@/components/MatchCard";
 import { LuisDashboardTeaser } from "@/components/LuisTracker";
+import { JokerMatchesCard, type JokerItem } from "@/components/JokerMatchesCard";
 
 import { AppShell } from "../_components/shell";
-import { getTeamMap, matchdayLabel, matchdayKey, teamOr } from "../_lib/data";
+import {
+  getAppSettings,
+  getTeamMap,
+  matchdayLabel,
+  matchdayKey,
+  teamOr,
+} from "../_lib/data";
 
 export const metadata = { title: "Inicio · Resiporra 26" };
 export const dynamic = "force-dynamic";
@@ -27,13 +34,16 @@ export default async function DashboardPage() {
 
   const [
     teamMap,
+    appSettings,
     { data: myStanding },
     { count: playerCount },
     { data: upcoming },
+    { data: jokerMatches },
     { data: myPredictions },
     { data: latestTracker },
   ] = await Promise.all([
     getTeamMap(),
+    getAppSettings(),
     supabase
       .from("standings_cache")
       .select("*")
@@ -46,6 +56,12 @@ export default async function DashboardPage() {
       .gte("kickoff_at", nowIso)
       .order("kickoff_at", { ascending: true })
       .limit(12),
+    supabase
+      .from("matches")
+      .select("*")
+      .eq("is_joker", true)
+      .neq("status", "finished")
+      .order("kickoff_at", { ascending: true }),
     supabase
       .from("predictions")
       .select("*")
@@ -63,6 +79,16 @@ export default async function DashboardPage() {
   const upcomingMatches = (upcoming as Match[] | null) ?? [];
   const predictionByMatch = new Map<string, Prediction>(
     ((myPredictions as Prediction[] | null) ?? []).map((p) => [p.match_id, p]),
+  );
+
+  const jokerMultiplier = appSettings.scoring.joker_multiplier;
+  const jokerItems: JokerItem[] = ((jokerMatches as Match[] | null) ?? []).map(
+    (m) => ({
+      match: m,
+      homeName: teamOr(teamMap, m.home_team).name,
+      awayName: teamOr(teamMap, m.away_team).name,
+      prediction: predictionByMatch.get(m.id) ?? null,
+    }),
   );
 
   // Next matchday = the earliest upcoming kickoff date, and every match on it.
@@ -114,6 +140,11 @@ export default async function DashboardPage() {
             sub="puntos de campeón de ronda"
           />
         </div>
+
+        {/* Joker matches — prominent, above the matches list. */}
+        {jokerItems.length > 0 && (
+          <JokerMatchesCard items={jokerItems} multiplier={jokerMultiplier} />
+        )}
 
         {/* Next matchday. */}
         <section className="space-y-4">
