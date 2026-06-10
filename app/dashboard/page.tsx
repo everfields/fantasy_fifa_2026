@@ -219,7 +219,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Quick links. */}
-        <section className="grid gap-4 sm:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <QuickLink
             href="/standings"
             title="Clasificación"
@@ -234,6 +234,11 @@ export default async function DashboardPage() {
             href="/tracker"
             title="AI-tracking system"
             desc="El análisis diario del míster."
+          />
+          <QuickLink
+            href="/rules"
+            title="¿Cómo se puntúa?"
+            desc="Plenos, jókers, meta volante y desempates."
           />
         </section>
       </div>

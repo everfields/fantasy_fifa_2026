@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
+  BookOpen,
   CalendarDays,
   Gift,
   Home,
@@ -24,6 +25,7 @@ const LINKS = [
   { href: "/standings", label: "Clasificación", shortLabel: "Tabla", icon: Trophy },
   { href: "/bonus", label: "Bonus", icon: Gift },
   { href: "/tracker", label: "AI Tracker", icon: Radar },
+  { href: "/rules", label: "Reglas", icon: BookOpen },
 ];
 
 export function Nav({
