@@ -141,11 +141,6 @@ export default async function DashboardPage() {
           />
         </div>
 
-        {/* Joker matches — prominent, above the matches list. */}
-        {jokerItems.length > 0 && (
-          <JokerMatchesCard items={jokerItems} multiplier={jokerMultiplier} />
-        )}
-
         {/* Next matchday. */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -209,6 +204,11 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Joker matches — right after the next matchday. */}
+        {jokerItems.length > 0 && (
+          <JokerMatchesCard items={jokerItems} multiplier={jokerMultiplier} />
+        )}
 
         {/* Luis de la Tracker — latest AI report. */}
         {trackerReport && (
