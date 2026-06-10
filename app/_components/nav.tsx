@@ -27,8 +27,8 @@ const LINKS = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/matches", label: "Partidos", icon: CalendarDays },
   { href: "/standings", label: "Clasificación", icon: Trophy },
-  { href: "/mundial", label: "Mundial", icon: Globe },
   { href: "/bonus", label: "Bonus", icon: Gift },
+  { href: "/mundial", label: "Mundial", icon: Globe },
   { href: "/tracker", label: "AI Tracker", icon: Radar },
   { href: "/rules", label: "Reglas", icon: BookOpen },
 ];
