@@ -40,7 +40,9 @@ stored in `matches`.
 - **LLM web-search for tables/bracket** — rejected: slower, costs tokens, can hallucinate, and
   duplicates data we already have; the provider's job stays results-only.
 - **Full FIFA third-place allocation to auto-fill the R32 bracket** — rejected for now (see
-  above); revisit only if manual assignment proves painful.
+  above). **Follow-up (pending, in prod-roadmap backlog):** once group matchday 3 starts
+  (~24-jun), implement the FIFA allocation matrix in `lib/tournament` and have it *propose* the
+  16 R32 crosses for the admin to confirm via `saveTeams` — automation suggests, admin confirms.
 
 ## Consequences
 

@@ -141,7 +141,7 @@
 
   <footer>
     <button class="reset" onclick="resetAll()">↺ Reiniciar todos los checks</button>
-    <p>Resiporra · Mundial 2026 · actualizado 10 jun 2026 (post ADR-0009) · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
+    <p>Resiporra · Mundial 2026 · actualizado 10 jun 2026 (post ADR-0011) · edítalo a mano cuando quieras · el progreso vive en localStorage.</p>
   </footer>
 </div>
 
@@ -171,10 +171,11 @@ const DATA = {
     ["lint-build", "CI: typecheck + tests + build", "Que npm run build y los tests corran en cada push (GitHub Action). Hoy se corre a mano (134 tests ✓ el 10-jun).", "p3"],
   ],
   soon: [
+    ["r32-auto", "Automatizar el bracket R32 (matriz FIFA)", "Cuando empiece la 3ª jornada de grupos (~24-jun): derivar los cruces de dieciseisavos desde lib/tournament — 1º/2º de cada grupo + la matriz FIFA de asignación de los 8 mejores terceros — y proponerlos al admin para confirmarlos en /admin/matches (saveTeams sigue siendo la autoridad, ADR-0011). Hoy la asignación es 100% manual.", "p2"],
     ["badges", "Rachas y badges", "'3 exactos seguidos', 'rey de la jornada'.", "p3"],
     ["reminders", "Recordatorios de lock", "Push/email antes de que cierre cada jornada.", "p3"],
     ["h2h", "Historial head-to-head", "Cara a cara entre dos amigos.", "p3"],
-    ["pot-payout", "Reparto automático del bote", "Cálculo y split sugerido de premios.", "p3"],
+    ["pot-payout", "Reparto automático del bote", "HECHO ✓ (10-jun, ADR-0010) — cuota 20 €, 2º recupera la apuesta, 20 € de gastos al organizador, el resto al 1º; recaudado derivado de los pagos marcados; premios visibles tras el botón '€ Bote' en /standings.", "p3"],
     ["leagues", "Ligas / grupos opcionales", "Sub-grupos dentro del pool.", "p3"],
     ["sdk-cast", "Quitar el cast de web_search al actualizar el SDK", "lib/providers/llmWebSearch.ts lleva un cast de tipo porque el SDK de Anthropic instalado aún no trae el discriminante web_search_20250305.", "p3"],
   ],
