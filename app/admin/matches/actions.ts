@@ -198,6 +198,67 @@ export async function saveJoker(
   };
 }
 
+const teamsSchema = z
+  .object({
+    match_id: z.string().min(1),
+    home_team: z.string().uuid().nullable(),
+    away_team: z.string().uuid().nullable(),
+  })
+  .strict();
+
+/**
+ * Assign the real teams to a knockout match once the qualifiers are known
+ * (seeded knockout rows have NULL teams). UPDATE in place — never delete +
+ * reinsert (FK cascades would wipe predictions). Feeds the /mundial bracket.
+ */
+export async function saveTeams(
+  _prev: MatchActionState,
+  form: FormData,
+): Promise<MatchActionState> {
+  const actor = await adminActor();
+
+  const parsed = teamsSchema.safeParse({
+    match_id: form.get("match_id"),
+    home_team: (form.get("home_team") as string) || null,
+    away_team: (form.get("away_team") as string) || null,
+  });
+  if (!parsed.success) return { ok: false, message: "Equipos inválidos." };
+
+  const { match_id, home_team, away_team } = parsed.data;
+  if (home_team && away_team && home_team === away_team) {
+    return { ok: false, message: "Un equipo no puede jugar contra sí mismo." };
+  }
+
+  const before = await loadMatch(match_id);
+  if (!before) return { ok: false, message: "Partido no encontrado." };
+  if (before.stage === "group") {
+    return { ok: false, message: "Los partidos de grupos no se reasignan." };
+  }
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("matches")
+    .update({ home_team, away_team })
+    .eq("id", match_id);
+
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "set_match_teams",
+    target_type: "match",
+    target_id: match_id,
+    before: { home_team: before.home_team, away_team: before.away_team },
+    after: { home_team, away_team },
+  });
+
+  revalidatePath("/admin/matches");
+  revalidatePath("/mundial");
+  revalidatePath("/matches");
+  revalidatePath("/dashboard");
+  return { ok: true, message: "Equipos asignados al cruce." };
+}
+
 const syncSchema = z.object({ match_id: z.string().min(1) }).strict();
 
 /**

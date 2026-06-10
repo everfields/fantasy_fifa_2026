@@ -21,6 +21,7 @@ import {
   saveJoker,
   saveLocksAt,
   saveResult,
+  saveTeams,
   syncNow,
   type MatchActionState,
 } from "@/app/admin/matches/actions";
@@ -50,10 +51,12 @@ export function MatchRow({
   match,
   home,
   away,
+  teams,
 }: {
   match: Match;
   home: Team;
   away: Team;
+  teams: Team[];
 }) {
   const meta = STATUS_META[match.status];
 
@@ -89,7 +92,7 @@ export function MatchRow({
         </div>
       </td>
       <td className="py-3 text-right">
-        <EditDialog match={match} home={home} away={away} />
+        <EditDialog match={match} home={home} away={away} teams={teams} />
       </td>
     </tr>
   );
@@ -99,15 +102,18 @@ function EditDialog({
   match,
   home,
   away,
+  teams,
 }: {
   match: Match;
   home: Team;
   away: Team;
+  teams: Team[];
 }) {
   const [resState, resAction] = useFormState(saveResult, initial);
   const [lockState, lockAction] = useFormState(saveLocksAt, initial);
   const [jokerState, jokerAction] = useFormState(saveJoker, initial);
   const [syncState, syncAction] = useFormState(syncNow, initial);
+  const [teamsState, teamsAction] = useFormState(saveTeams, initial);
 
   return (
     <Dialog>
@@ -126,6 +132,34 @@ function EditDialog({
             estado o mueve el bloqueo.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Knockout team assignment — seeded knockout rows start with no teams. */}
+        {match.stage !== "group" ? (
+          <form
+            action={teamsAction}
+            className="space-y-3 border-b border-border pb-5"
+          >
+            <input type="hidden" name="match_id" value={match.id} />
+            <Label>Equipos del cruce</Label>
+            <div className="flex items-center gap-2">
+              <TeamSelect
+                name="home_team"
+                current={match.home_team}
+                teams={teams}
+              />
+              <span className="font-mono text-muted-foreground">vs</span>
+              <TeamSelect
+                name="away_team"
+                current={match.away_team}
+                teams={teams}
+              />
+              <SubmitButton size="sm" variant="outline">
+                Asignar
+              </SubmitButton>
+            </div>
+            {teamsState.message ? <Message state={teamsState} /> : null}
+          </form>
+        ) : null}
 
         {/* Result + status */}
         <form action={resAction} className="space-y-4 border-b border-border pb-5">
@@ -239,6 +273,31 @@ function EditDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TeamSelect({
+  name,
+  current,
+  teams,
+}: {
+  name: string;
+  current: string | null;
+  teams: Team[];
+}) {
+  return (
+    <select
+      name={name}
+      defaultValue={current ?? ""}
+      className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+    >
+      <option value="">Por definir</option>
+      {teams.map((t) => (
+        <option key={t.id} value={t.id}>
+          {t.code} — {t.name}
+        </option>
+      ))}
+    </select>
   );
 }
 

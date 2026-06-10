@@ -1,6 +1,6 @@
-// Tests for the pure scoring engine. Run with: node --test (after TS build)
-// or a TS-aware loader (e.g. `node --test --import tsx`).
-import { test } from "node:test";
+// Tests for the pure scoring engine. Run with: npm test (vitest).
+
+import { test } from "vitest";
 import assert from "node:assert";
 
 import {

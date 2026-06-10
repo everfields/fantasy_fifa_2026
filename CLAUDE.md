@@ -26,10 +26,11 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 7. **Player data is sacred — never lose predictions.** `predictions`, `bonus_answers`, `point_adjustments`, `round_awards`, `profiles` must never be hit by `drop`/`truncate`/`delete` — directly or via FK cascade (deleting a `matches`/`teams`/`bonus_questions` row cascade-deletes predictions/answers: always `UPDATE` in place, never delete+reinsert). Migrations are **additive-only** post-launch; seeds self-abort if player data exists; **backup before any prod SQL** with `bash db/backup.sh`. Full guide: `db/README.md` → "Data safety" (ADR-0007).
 
 ## Directory map
-- `app/` — routes. `(auth)`, `dashboard`, `matches`, `standings`, `bonus`, `match/[id]`, `tracker`, `admin/*`, `api/*` (incl. `api/cron/luis-tracker`) — no chat (see `docs/decisions/0005-remove-chat.md`)
+- `app/` — routes. `(auth)`, `dashboard`, `matches`, `standings`, `mundial`, `bonus`, `match/[id]`, `tracker`, `admin/*`, `api/*` (incl. `api/cron/luis-tracker`) — no chat (see `docs/decisions/0005-remove-chat.md`)
 - `lib/supabase` — browser (`client.ts`) + server (`server.ts`, incl. `createServiceClient` for cron/admin)
 - `lib/providers` — `FootballDataProvider` interface + impls
 - `lib/scoring` — pure scoring engine (reads `AppSettings`)
+- `lib/tournament` — pure group-standings + best-thirds (FIFA criteria) for `/mundial`; bracket renders from `matches` rows, knockout teams assigned by the admin — no LLM (ADR-0011)
 - `lib/tracker` — "Luis de la Tracker": `analysis.ts` (pure), `persona.ts`, `luis.ts` (LLM), `brand.ts`
 - `lib/auth` — role guards
 - `components/` — `ui/` (shadcn), `MatchCard`, `PredictionForm`, `RankingTable`, `PointsChart`, `Countdown`, `LuisTracker`, `admin/*`
@@ -93,5 +94,5 @@ daily `crons` entry is Hobby-legal and does **not** resurrect live-data polling 
 - Server Components by default; `"use client"` only when needed.
 - **Dark mode:** `next-themes` (class-based) — UI colors must use the semantic tokens (`bg-background`, `text-muted-foreground`, `border-border`…), never hardcoded palette colors, so both themes work (see `docs/decisions/0008-dark-mode.md`).
 - Validate inputs with `zod` in Server Actions / API routes.
-- `npm run typecheck` and `npm run lint` must pass before considering work done.
+- `npm run typecheck`, `npm run lint` and `npm test` (vitest) must pass before considering work done.
 - Secrets in `.env` (see `.env.example`); never commit them.

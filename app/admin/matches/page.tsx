@@ -45,9 +45,10 @@ export default async function AdminMatchesPage() {
     supabase.from("teams").select("*"),
   ]);
 
-  const teamMap = new Map<string, Team>(
-    ((teams as Team[] | null) ?? []).map((t) => [t.id, t]),
-  );
+  const teamList = ((teams as Team[] | null) ?? [])
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const teamMap = new Map<string, Team>(teamList.map((t) => [t.id, t]));
 
   const all = (matches as Match[] | null) ?? [];
   const jokerCount = all.filter((m) => m.is_joker).length;
@@ -130,6 +131,7 @@ export default async function AdminMatchesPage() {
                         match={m}
                         home={teamOr(teamMap, m.home_team)}
                         away={teamOr(teamMap, m.away_team)}
+                        teams={teamList}
                       />
                     ))}
                   </tbody>

@@ -20,6 +20,7 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | [0008](0008-dark-mode.md) | 2026-06-10 | Dark mode (class-based, next-themes) | Accepted | `next-themes` provider + nav toggle activates the existing `.dark` palette; system default, user override persisted; admin converted from hardcoded zinc to semantic tokens; rule: new UI uses theme tokens |
 | [0009](0009-live-results-llm-web-search.md) | 2026-06-10 | Live results via LLM web search + pg_cron scheduler | Accepted | Supersedes 0002: `LlmWebSearchProvider` (Haiku + web_search, two polls/match, FT-confirmation rule) feeds the dormant `update-results` route; Supabase pg_cron+pg_net every 15 min (Vault secrets); auto-scoring on finish; meta volante/bonus stay manual-recalc; Luis cron → 04:30 UTC |
 | [0010](0010-pot-payout-model.md) | 2026-06-10 | Pot payout model | Accepted | 20 € entry fee; 2º gets stake back; 20 € domain + infra costs reimbursed to the organizer; 1º takes the rest; `pot_amount` derived (`entry_fee × paid`); players see only the two prizes on `/standings` |
+| [0011](0011-mundial-section.md) | 2026-06-10 | "Mundial" section — local standings + bracket from matches | Accepted | `/mundial`: group tables computed purely from `matches` (FIFA criteria; non-computable ties flagged), best-thirds ranking, bracket rendered from knockout rows; admin assigns knockout teams (`saveTeams`); no LLM; vitest infra fixed (`npm test`, 139 tests) |
 
 ## How to add a decision
 

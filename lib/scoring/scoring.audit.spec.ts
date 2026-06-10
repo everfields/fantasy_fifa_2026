@@ -10,7 +10,7 @@
 //
 // Run: npx tsx --test lib/scoring/scoring.audit.spec.ts
 // ============================================================================
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 
 import {
