@@ -21,7 +21,7 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 2. **Provider-agnostic core.** App code depends only on `lib/providers/FootballDataProvider.ts`, never on a concrete impl. Select impl via `FOOTBALL_PROVIDER` env var.
 3. **Scoring always reads `app_settings`** (the single jsonb config row) — never hardcode point values. `lib/scoring` is pure and unit-testable.
 4. **Never trust the client for locks.** Prediction freeze at `kickoff` is enforced server-side / via RLS (`now() < locks_at`).
-5. **Recalc is idempotent and MANUAL.** Admin previews impact ("affects X predictions") before executing; re-scoring never double-counts.
+5. **Recalc is idempotent and MANUAL.** Admin previews impact ("affects X predictions") before executing; re-scoring never double-counts. Exception (ADR-0012): a *single match* is rescored automatically when it finishes — via cron, «Sync ahora», or the admin saving a result as `finished` — using the same idempotent helpers; jokers/bonus/meta volante still require the full manual recalc.
 6. **Path alias:** `@/*` maps to repo root.
 7. **Player data is sacred — never lose predictions.** `predictions`, `bonus_answers`, `point_adjustments`, `round_awards`, `profiles` must never be hit by `drop`/`truncate`/`delete` — directly or via FK cascade (deleting a `matches`/`teams`/`bonus_questions` row cascade-deletes predictions/answers: always `UPDATE` in place, never delete+reinsert). Migrations are **additive-only** post-launch; seeds self-abort if player data exists; **backup before any prod SQL** with `bash db/backup.sh`. Full guide: `db/README.md` → "Data safety" (ADR-0007).
 
