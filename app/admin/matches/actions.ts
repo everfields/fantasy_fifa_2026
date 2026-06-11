@@ -8,6 +8,11 @@ import { createServiceClient } from "@/lib/supabase/server";
 import type { Match } from "@/lib/types";
 
 import { adminActor, writeAudit } from "../_lib";
+import {
+  loadAppSettings,
+  refreshStandings,
+  rescoreMatches,
+} from "@/app/api/_lib";
 
 export type MatchActionState = { ok: boolean; message: string };
 
@@ -59,6 +64,13 @@ export async function saveResult(
 
   if (error) return { ok: false, message: `Error: ${error.message}` };
 
+  // Rescore this match's predictions in place (idempotent — only changed rows
+  // are written; a non-finished status clears points back to null). The full
+  // manual recalc remains the tool for jokers/bonus/meta volante.
+  const settings = await loadAppSettings(supabase);
+  const rescore = await rescoreMatches(supabase, [match_id], settings.scoring);
+  if (rescore.rescored > 0) await refreshStandings(supabase);
+
   await writeAudit({
     actor,
     action: "override_match_result",
@@ -69,15 +81,17 @@ export async function saveResult(
       away_score: before.away_score,
       status: before.status,
     },
-    after: { home_score, away_score, status },
+    after: { home_score, away_score, status, rescored: rescore.rescored },
   });
 
   revalidatePath("/admin/matches");
+  revalidatePath("/standings");
+  revalidatePath("/dashboard");
   return {
     ok: true,
     message:
       status === "finished"
-        ? "Resultado guardado. Ejecuta «Recalcular» para repartir los puntos."
+        ? `Resultado guardado y puntos repartidos (${rescore.rescored} predicciones actualizadas).`
         : "Partido actualizado.",
   };
 }
@@ -284,7 +298,7 @@ export async function syncNow(
     const res = await fetch(`${base}/api/admin/sync-now`, {
       method: "POST",
       headers: { "content-type": "application/json", cookie },
-      body: JSON.stringify({ match_id: parsed.data.match_id }),
+      body: JSON.stringify({ matchId: parsed.data.match_id }),
       cache: "no-store",
     });
 
