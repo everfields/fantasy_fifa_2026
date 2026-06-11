@@ -2,8 +2,9 @@ import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import type { Match, Prediction, RoundAward, StandingRow } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isExact, roundKeyForMatch } from "@/lib/scoring";
 import { RankingTable } from "@/components/RankingTable";
-import { MetaVolanteBoard } from "@/components/MetaVolanteBoard";
+import { MetaVolanteBoard, type LiveRound } from "@/components/MetaVolanteBoard";
 import { PointsChart } from "@/components/PointsChart";
 
 import { PotDialog } from "@/components/PotDialog";
@@ -76,6 +77,80 @@ function buildSeries(
   });
 }
 
+// Chronological order of meta-volante rounds (third_place folds into final).
+const ROUND_SEQ = [
+  "group-md1",
+  "group-md2",
+  "group-md3",
+  "round_of_32",
+  "round_of_16",
+  "quarter",
+  "semi",
+  "final",
+] as const;
+
+/**
+ * Provisional standing of the round currently in progress: the earliest
+ * started round without a granted award. Sums already-awarded prediction
+ * points per user (display only — the real award is granted by the manual
+ * recalc at round close, ADR rule 5 untouched).
+ */
+function buildLiveRound(
+  matches: Match[],
+  predictions: Prediction[],
+  awards: RoundAward[],
+): LiveRound | null {
+  const keyOf = (m: Match): string | null => {
+    try {
+      return roundKeyForMatch(m);
+    } catch {
+      return null;
+    }
+  };
+
+  const awarded = new Set(awards.map((a) => a.round_key));
+  const started = new Set(
+    matches
+      .filter((m) => m.status !== "scheduled")
+      .map(keyOf)
+      .filter(Boolean) as string[],
+  );
+  const roundKey = ROUND_SEQ.find((k) => started.has(k) && !awarded.has(k));
+  if (!roundKey) return null;
+
+  const roundMatches = matches.filter((m) => keyOf(m) === roundKey);
+  const byId = new Map(roundMatches.map((m) => [m.id, m]));
+
+  const perUser = new Map<string, { round_points: number; exact_hits: number }>();
+  for (const p of predictions) {
+    const m = byId.get(p.match_id);
+    if (!m || m.status !== "finished") continue;
+    const agg = perUser.get(p.user_id) ?? { round_points: 0, exact_hits: 0 };
+    agg.round_points += p.points_awarded ?? 0;
+    if (
+      m.home_score !== null &&
+      m.away_score !== null &&
+      isExact(p.home_pred, p.away_pred, m.home_score, m.away_score)
+    ) {
+      agg.exact_hits += 1;
+    }
+    perUser.set(p.user_id, agg);
+  }
+
+  const entries = Array.from(perUser.entries())
+    .map(([user_id, agg]) => ({ user_id, ...agg }))
+    .sort(
+      (a, b) => b.round_points - a.round_points || b.exact_hits - a.exact_hits,
+    );
+
+  return {
+    roundKey,
+    entries,
+    finished: roundMatches.filter((m) => m.status === "finished").length,
+    total: roundMatches.length,
+  };
+}
+
 export default async function StandingsPage() {
   const profile = await requireUser();
   const supabase = createClient();
@@ -105,6 +180,7 @@ export default async function StandingsPage() {
   const awards = (awardData as RoundAward[] | null) ?? [];
 
   const series = buildSeries(matches, predictions, standings);
+  const liveRound = buildLiveRound(matches, predictions, awards);
 
   return (
     <AppShell profile={profile}>
@@ -143,6 +219,7 @@ export default async function StandingsPage() {
               standings={standings}
               currentUserId={profile.id}
               pointsPerRound={settings.meta_volante_points}
+              live={liveRound}
             />
           </TabsContent>
 

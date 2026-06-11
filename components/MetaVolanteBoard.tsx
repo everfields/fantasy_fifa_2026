@@ -60,22 +60,32 @@ function initials(name: string) {
  * it) and the accumulated award ranking. Player identity (name/avatar) comes
  * from the standings rows; `awards` are the raw round_awards rows.
  */
+export interface LiveRound {
+  roundKey: string;
+  entries: { user_id: string; round_points: number; exact_hits: number }[];
+  /** # of finished (scored) matches in the round vs total. */
+  finished: number;
+  total: number;
+}
+
 export function MetaVolanteBoard({
   awards,
   standings,
   currentUserId,
   pointsPerRound,
+  live,
   className,
 }: {
   awards: RoundAward[];
   standings: StandingRow[];
   currentUserId?: string;
   pointsPerRound: number;
+  live?: LiveRound | null;
   className?: string;
 }) {
   const players = new Map(standings.map((s) => [s.user_id, s]));
 
-  if (awards.length === 0) {
+  if (awards.length === 0 && (!live || live.entries.length === 0)) {
     return (
       <div
         className={cn(
@@ -118,7 +128,83 @@ export function MetaVolanteBoard({
 
   return (
     <div className={cn("space-y-6", className)}>
+      {/* Live (provisional) standing of the round in progress */}
+      {live && live.entries.length > 0 ? (
+        <section className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2 px-1">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Ronda en curso · {ROUND_LABELS[live.roundKey] ?? live.roundKey}
+            </h2>
+            <span className="text-[11px] tabular-nums text-muted-foreground">
+              {live.finished}/{live.total} partidos
+            </span>
+          </div>
+          <ol className="divide-y divide-border overflow-hidden rounded-xl border bg-card">
+            {live.entries.map((e, i) => {
+              const p = players.get(e.user_id);
+              const isCurrent = currentUserId === e.user_id;
+              const leader =
+                e.round_points === live.entries[0].round_points &&
+                e.exact_hits === live.entries[0].exact_hits;
+              return (
+                <li
+                  key={e.user_id}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 sm:px-4",
+                    isCurrent && "bg-primary/5 ring-1 ring-inset ring-primary/30"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                      leader
+                        ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {i + 1}
+                  </span>
+                  <Avatar className="h-7 w-7 shrink-0">
+                    {p?.avatar ? (
+                      <AvatarImage src={p.avatar} alt={p.display_name} />
+                    ) : null}
+                    <AvatarFallback className="text-[10px]">
+                      {initials(p?.display_name ?? "?")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <span className="truncate text-sm font-semibold">
+                      {p?.display_name ?? "Jugador"}
+                    </span>
+                    {leader ? <span aria-hidden>★</span> : null}
+                    {isCurrent && (
+                      <Badge
+                        variant="success"
+                        className="shrink-0 px-1.5 py-0 text-[10px]"
+                      >
+                        Tú
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {e.exact_hits} plenos
+                  </span>
+                  <span className="w-10 shrink-0 text-right text-sm font-black tabular-nums">
+                    {e.round_points}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="px-1 text-[11px] text-muted-foreground">
+            Provisional: la meta volante ({pointsPerRound} pts) se otorga al
+            cierre de la ronda.
+          </p>
+        </section>
+      ) : null}
+
       {/* Accumulated meta-volante ranking */}
+      {awards.length > 0 ? (
       <ol className="divide-y divide-border overflow-hidden rounded-xl border bg-card">
         {ranking.map((entry, i) => {
           const p = players.get(entry.userId);
@@ -181,8 +267,10 @@ export function MetaVolanteBoard({
           );
         })}
       </ol>
+      ) : null}
 
       {/* Round-by-round winners */}
+      {awards.length > 0 ? (
       <section className="space-y-2">
         <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Ronda a ronda
@@ -218,6 +306,7 @@ export function MetaVolanteBoard({
           })}
         </ol>
       </section>
+      ) : null}
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
         La meta volante premia con {pointsPerRound} pts extra a quien más puntos
