@@ -16,6 +16,7 @@ import {
   Settings,
   Sun,
   Trophy,
+  UserRound,
   X,
 } from "lucide-react";
 
@@ -130,9 +131,17 @@ export function Nav({
               <Sun className="h-5 w-5 dark:hidden" />
               <Moon className="hidden h-5 w-5 dark:block" />
             </button>
-            <span className="hidden text-sm font-medium text-muted-foreground md:inline">
+            <Link
+              href="/profile"
+              className={cn(
+                "hidden rounded-full px-3 py-1.5 text-sm font-medium transition-colors md:inline",
+                isActive("/profile")
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+            >
               {displayName}
-            </span>
+            </Link>
             <Button variant="outline" size="sm" onClick={signOut}>
               Salir
             </Button>
@@ -216,9 +225,18 @@ export function Nav({
           )}
 
           <div className="mt-auto border-t border-border pt-3">
-            <p className="px-3 text-sm font-medium text-muted-foreground">
+            <Link
+              href="/profile"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                isActive("/profile")
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+            >
+              <UserRound className="h-5 w-5" />
               {displayName}
-            </p>
+            </Link>
           </div>
         </aside>
       </div>
