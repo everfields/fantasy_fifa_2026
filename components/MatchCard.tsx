@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 
 import type { Match, Prediction, Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -130,6 +131,7 @@ export function MatchCard({
   locked,
   className,
   footer,
+  href,
 }: {
   match: Match;
   homeTeam: Team;
@@ -138,6 +140,8 @@ export function MatchCard({
   locked?: boolean;
   className?: string;
   footer?: React.ReactNode;
+  // When set, the whole card is a link — footer must NOT contain an <a>.
+  href?: string;
 }) {
   // Build the stage label, optionally with matchday for group stage
   const stageLabel =
@@ -145,12 +149,13 @@ export function MatchCard({
       ? `${STAGE_LABELS[match.stage]} · J${match.matchday}`
       : STAGE_LABELS[match.stage] + (match.group ? ` · ${match.group}` : "");
 
-  return (
+  const card = (
     <Card
       className={cn(
         "overflow-hidden transition-shadow hover:shadow-md",
         match.status === "live" && "ring-1 ring-destructive/40",
         match.is_joker && "ring-1 ring-amber-400/50",
+        href && "hover:border-primary/50",
         className
       )}
     >
@@ -201,5 +206,15 @@ export function MatchCard({
         <CardFooter className="border-t px-4 py-3">{footer}</CardFooter>
       ) : null}
     </Card>
+  );
+
+  if (!href) return card;
+  return (
+    <Link
+      href={href}
+      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {card}
+    </Link>
   );
 }

@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import type { Match, Prediction } from "@/lib/types";
@@ -136,13 +134,11 @@ export default async function MatchesPage() {
                         awayTeam={teamOr(teamMap, m.away_team)}
                         prediction={predByMatch.get(m.id)}
                         locked
+                        href={`/match/${m.id}`}
                         footer={
-                          <Link
-                            href={`/match/${m.id}`}
-                            className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
-                          >
+                          <span className="text-sm font-semibold text-primary">
                             Ver pronósticos del grupo →
-                          </Link>
+                          </span>
                         }
                       />
                     ))}

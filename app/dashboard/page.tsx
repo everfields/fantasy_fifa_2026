@@ -31,6 +31,8 @@ export default async function DashboardPage() {
   const profile = await requireUser();
   const supabase = createClient();
   const nowIso = new Date().toISOString();
+  // Matches that kicked off in the last 4h and aren't finished = "en juego".
+  const liveWindowIso = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
 
   const [
     teamMap,
@@ -38,6 +40,7 @@ export default async function DashboardPage() {
     { data: myStanding },
     { count: playerCount },
     { data: upcoming },
+    { data: inPlay },
     { data: jokerMatches },
     { data: myPredictions },
     { data: latestTracker },
@@ -59,6 +62,13 @@ export default async function DashboardPage() {
     supabase
       .from("matches")
       .select("*")
+      .lt("kickoff_at", nowIso)
+      .gte("kickoff_at", liveWindowIso)
+      .neq("status", "finished")
+      .order("kickoff_at", { ascending: true }),
+    supabase
+      .from("matches")
+      .select("*")
       .eq("is_joker", true)
       .neq("status", "finished")
       .order("kickoff_at", { ascending: true }),
@@ -77,6 +87,7 @@ export default async function DashboardPage() {
   const standing = (myStanding as StandingRow | null) ?? null;
   const trackerReport = (latestTracker as TrackerReport | null) ?? null;
   const upcomingMatches = (upcoming as Match[] | null) ?? [];
+  const liveMatches = (inPlay as Match[] | null) ?? [];
   const predictionByMatch = new Map<string, Prediction>(
     ((myPredictions as Prediction[] | null) ?? []).map((p) => [p.match_id, p]),
   );
@@ -140,6 +151,34 @@ export default async function DashboardPage() {
             sub="puntos de campeón de ronda"
           />
         </div>
+
+        {/* Live now — predictions are revealed, link straight to them. */}
+        {liveMatches.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-destructive" />
+              <h2 className="text-xl font-black tracking-tight">En juego</h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {liveMatches.map((m) => (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  homeTeam={teamOr(teamMap, m.home_team)}
+                  awayTeam={teamOr(teamMap, m.away_team)}
+                  prediction={predictionByMatch.get(m.id)}
+                  locked
+                  href={`/match/${m.id}`}
+                  footer={
+                    <span className="text-sm font-semibold text-primary">
+                      Ver pronósticos del grupo →
+                    </span>
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Next matchday. */}
         <section className="space-y-4">
