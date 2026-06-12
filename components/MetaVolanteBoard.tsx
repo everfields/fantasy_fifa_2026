@@ -45,6 +45,24 @@ function roundIndex(key: string): number {
   return i === -1 ? ROUND_ORDER.length : i;
 }
 
+/** "1º 100 · 2º–3º 50 · 4º–7º 20" — compresses consecutive equal prizes. */
+function formatDistribution(distribution: number[]): string {
+  let last = distribution.length;
+  while (last > 0 && distribution[last - 1] <= 0) last--;
+  const paid = distribution.slice(0, last);
+  const parts: string[] = [];
+  let i = 0;
+  while (i < paid.length) {
+    let j = i;
+    while (j + 1 < paid.length && paid[j + 1] === paid[i]) j++;
+    parts.push(
+      i === j ? `${i + 1}º ${paid[i]}` : `${i + 1}º–${j + 1}º ${paid[i]}`
+    );
+    i = j + 1;
+  }
+  return parts.join(" · ");
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -72,18 +90,19 @@ export function MetaVolanteBoard({
   awards,
   standings,
   currentUserId,
-  pointsPerRound,
+  distribution,
   live,
   className,
 }: {
   awards: RoundAward[];
   standings: StandingRow[];
   currentUserId?: string;
-  pointsPerRound: number;
+  distribution: number[];
   live?: LiveRound | null;
   className?: string;
 }) {
   const players = new Map(standings.map((s) => [s.user_id, s]));
+  const prizeLadder = formatDistribution(distribution);
 
   if (awards.length === 0 && (!live || live.entries.length === 0)) {
     return (
@@ -93,8 +112,8 @@ export function MetaVolanteBoard({
           className
         )}
       >
-        Todavía no hay metas volantes. Al cierre de cada ronda, quien más puntos
-        sume en ella se lleva {pointsPerRound} pts extra. Aquí verás el palmarés.
+        Todavía no hay metas volantes. Al cierre de cada ronda, los primeros
+        puestos reparten premio ({prizeLadder} pts). Aquí verás el palmarés.
       </div>
     );
   }
@@ -124,6 +143,9 @@ export function MetaVolanteBoard({
     const list = awardsByRound.get(a.round_key) ?? [];
     list.push(a);
     awardsByRound.set(a.round_key, list);
+  }
+  for (const list of awardsByRound.values()) {
+    list.sort((a, b) => b.points - a.points || b.round_points - a.round_points);
   }
 
   return (
@@ -197,8 +219,8 @@ export function MetaVolanteBoard({
             })}
           </ol>
           <p className="px-1 text-[11px] text-muted-foreground">
-            Provisional: la meta volante ({pointsPerRound} pts) se otorga al
-            cierre de la ronda.
+            Provisional: los premios ({prizeLadder} pts) se otorgan al cierre
+            de la ronda.
           </p>
         </section>
       ) : null}
@@ -287,20 +309,25 @@ export function MetaVolanteBoard({
                   {ROUND_LABELS[key] ?? key}
                 </span>
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  {winners.map((w) => (
-                    <p key={w.id} className="truncate text-sm font-semibold">
-                      <span aria-hidden>★ </span>
-                      {players.get(w.user_id)?.display_name ?? "Jugador"}
-                      <span className="text-xs font-normal tabular-nums text-muted-foreground">
-                        {" "}
-                        · {w.round_points} pts en la ronda
+                  {winners.map((w, i) => (
+                    <p
+                      key={w.id}
+                      className="flex items-baseline gap-2 text-sm font-semibold"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {i === 0 ? <span aria-hidden>★ </span> : null}
+                        {players.get(w.user_id)?.display_name ?? "Jugador"}
+                        <span className="text-xs font-normal tabular-nums text-muted-foreground">
+                          {" "}
+                          · {w.round_points} pts en la ronda
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                        +{w.points}
                       </span>
                     </p>
                   ))}
                 </div>
-                <span className="shrink-0 text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                  +{winners[0]?.points ?? pointsPerRound}
-                </span>
               </li>
             );
           })}
@@ -309,9 +336,9 @@ export function MetaVolanteBoard({
       ) : null}
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-        La meta volante premia con {pointsPerRound} pts extra a quien más puntos
-        de pronósticos suma en cada ronda. Empates: más plenos en la ronda; si
-        persiste, se reparte.
+        La meta volante reparte premios por posición en cada ronda según los
+        puntos de pronósticos ({prizeLadder} pts). Empates: más plenos en la
+        ronda; si persiste, los empatados se reparten la suma de sus premios.
       </p>
     </div>
   );
