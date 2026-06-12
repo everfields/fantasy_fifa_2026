@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MaillotBadge } from "@/components/MaillotBadge";
-import { initials, RankBadge } from "@/components/classifications";
+import { BoardHeader, initials, RankBadge } from "@/components/classifications";
 
 // Display order + Spanish labels for every meta-volante round
 // (see roundKeyForMatch in lib/scoring — third_place folds into "final").
@@ -221,13 +221,11 @@ export function MetaVolanteBoard({
       {awards.length > 0 ? (
         <div className="flex flex-col gap-0">
           <div className="overflow-hidden rounded-t-xl border-x border-t bg-card">
-            {/* Blue-accented header */}
-            <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
-              <MaillotBadge maillot="azul" size="md" />
-              <span className="text-[13px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                Metas volantes
-              </span>
-            </div>
+            <BoardHeader
+              maillot="azul"
+              title="Metas volantes"
+              accentClass="text-blue-700 dark:text-blue-400"
+            />
 
             <ol className="divide-y divide-border">
               {ranking.map((entry, i) => {

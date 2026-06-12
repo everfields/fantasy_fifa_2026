@@ -3,7 +3,50 @@
  * Server-safe — no "use client".
  */
 import * as React from "react";
+
+import type { MaillotKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { MaillotBadge } from "@/components/MaillotBadge";
+
+/**
+ * Canonical board header — every classification card opens with this exact
+ * anatomy: neutral muted bar, md jersey badge (28px), 13px bold uppercase
+ * title in the board's identity color. `right` is an optional muted slot
+ * (subtitle, counters) aligned to the end.
+ */
+export function BoardHeader({
+  maillot,
+  title,
+  accentClass,
+  right,
+}: {
+  maillot: MaillotKey;
+  title: string;
+  /** Title color, e.g. "text-green-700 dark:text-green-400". Defaults to foreground. */
+  accentClass?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2.5">
+      <div className="flex min-w-0 items-center gap-2">
+        <MaillotBadge maillot={maillot} size="md" />
+        <span
+          className={cn(
+            "truncate text-[13px] font-bold uppercase tracking-wider",
+            accentClass
+          )}
+        >
+          {title}
+        </span>
+      </div>
+      {right ? (
+        <span className="shrink-0 text-[11px] text-muted-foreground">
+          {right}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export const ASTON_LABEL =
   "Coche Aston Martin — el safety car le pisa la rueda";

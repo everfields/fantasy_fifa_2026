@@ -4,7 +4,7 @@ import type { RegularityRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { initials, RankBadge } from "@/components/classifications";
+import { BoardHeader, initials, RankBadge } from "@/components/classifications";
 
 /* ─── RegularityBoard ────────────────────────────────────────────────────── */
 
@@ -24,28 +24,11 @@ export function RegularityBoard({
   return (
     <div className="flex flex-col gap-0">
       <div className="overflow-hidden rounded-t-xl border-x border-t bg-card">
-        {/* Green-accented header */}
-        <div className="flex items-center gap-2 border-b border-green-500/30 bg-green-500/8 px-4 py-2.5">
-          {/* Mini green jersey icon */}
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            aria-hidden
-            className="shrink-0"
-          >
-            <path
-              d="M9 2 C9 2 9.5 1 12 1 C14.5 1 15 2 15 2 L19 4 L22 4 L22 9 L18 8 L18 21 L6 21 L6 8 L2 9 L2 4 L5 4 Z"
-              fill="#22c55e"
-              stroke="hsl(var(--border))"
-              strokeWidth="0.6"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="text-[13px] font-bold uppercase tracking-wider text-green-700 dark:text-green-400">
-            La regularidad
-          </span>
-        </div>
+        <BoardHeader
+          maillot="verde"
+          title="La regularidad"
+          accentClass="text-green-700 dark:text-green-400"
+        />
 
         {rows.length === 0 ? (
           <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">

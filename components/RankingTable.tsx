@@ -18,6 +18,8 @@ import { initials, RankBadge } from "@/components/classifications";
  *                 the player name, in canonical order.
  *   hideHeader  — suppress the sm+ column-header row (used by PelotonBoard
  *                 when each group already has its own heading).
+ *   header      — optional node rendered inside the card, above the columns
+ *                 (pass a <BoardHeader> for the canonical board chrome).
  */
 export function RankingTable({
   rows,
@@ -25,12 +27,14 @@ export function RankingTable({
   className,
   maillots,
   hideHeader = false,
+  header,
 }: {
   rows: StandingRow[];
   currentUserId?: string;
   className?: string;
   maillots?: Record<string, MaillotKey[]>;
   hideHeader?: boolean;
+  header?: React.ReactNode;
 }) {
   if (rows.length === 0) {
     return (
@@ -47,6 +51,7 @@ export function RankingTable({
 
   return (
     <div className={cn("overflow-hidden rounded-xl border bg-card", className)}>
+      {header}
       {/* Column headers — only where the stat columns exist (sm+). */}
       {!hideHeader && (
         <div className="hidden items-center gap-3 border-b bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex">

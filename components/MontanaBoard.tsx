@@ -4,8 +4,11 @@ import type { MatchStatus, MontanaRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MaillotBadge } from "@/components/MaillotBadge";
-import { initials, RankBadge as SharedRankBadge } from "@/components/classifications";
+import {
+  BoardHeader,
+  initials,
+  RankBadge as SharedRankBadge,
+} from "@/components/classifications";
 
 /* ─── types ──────────────────────────────────────────────────────────────── */
 
@@ -93,13 +96,11 @@ export function MontanaBoard({
     <div className="flex flex-col gap-6">
       {/* ── (a) Classification table ─────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border bg-card">
-        {/* Polka-dot accent header */}
-        <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
-          <MaillotBadge maillot="lunares" size="md" />
-          <span className="text-[13px] font-bold uppercase tracking-wider">
-            Rey de la montaña
-          </span>
-        </div>
+        <BoardHeader
+          maillot="lunares"
+          title="Rey de la montaña"
+          accentClass="text-red-600 dark:text-red-400"
+        />
 
         {rows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">

@@ -21,7 +21,11 @@ import {
 } from "@/components/MontanaBoard";
 import { RegularityBoard } from "@/components/RegularityBoard";
 import { MaillotBadge, MAILLOT_LABELS } from "@/components/MaillotBadge";
-import { AstonBadge, ASTON_LABEL } from "@/components/classifications";
+import {
+  AstonBadge,
+  ASTON_LABEL,
+  BoardHeader,
+} from "@/components/classifications";
 
 import {
   groupPeloton,
@@ -392,21 +396,19 @@ export default async function StandingsPage() {
             <RegularityBoard rows={regularity} currentUserId={profile.id} />
           </TabsContent>
 
-          <TabsContent value="jovenes" className="mt-4 space-y-3">
-            <header className="px-1">
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <MaillotBadge maillot="blanco" />
-                Mejor joven
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                Los tres jóvenes talentos de la porra.
-              </p>
-            </header>
+          <TabsContent value="jovenes" className="mt-4">
             {showYoung ? (
               <RankingTable
                 rows={youngRows}
                 currentUserId={profile.id}
                 maillots={maillots}
+                header={
+                  <BoardHeader
+                    maillot="blanco"
+                    title="Mejor joven"
+                    right="Los tres jóvenes talentos de la porra"
+                  />
+                }
               />
             ) : (
               <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
