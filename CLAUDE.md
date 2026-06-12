@@ -75,7 +75,10 @@ batacazos, rebaño, perfiles de riesgo, jóker, clasificación) → **LLM verbal
 (`lib/tracker/luis.ts`, Anthropic SDK, persona in `lib/tracker/persona.ts`) → **`tracker_reports`**
 (one row/day) → `/tracker` page + dashboard teaser. **HARD RULE: the LLM only verbalizes, never
 invents numbers/names** — new insights = new patterns in `analysis.ts` (+ a test), not prompt
-embellishment. Trigger: daily Vercel cron `GET /api/cron/luis-tracker` (`CRON_SECRET`; idempotent
+embellishment. **HARD RULE: no spoilers** — the tracker analyzes only what already happened:
+predictions on non-`finished` matches never enter the analysis (filtered in `analysis.ts` AND in
+the cron loader; regression test in `analysis.spec.ts`). Revealing anything about a pending pick
+(scoreline, sign, consensus, averages, repeated lines) lets players copy strategies before `locks_at`. Trigger: daily Vercel cron `GET /api/cron/luis-tracker` (`CRON_SECRET`; idempotent
 upsert; `?date=`/`?force`). No key / API failure → deterministic `analysis_only` report. The single
 daily `crons` entry is Hobby-legal and does **not** resurrect live-data polling (ADR-0002 stands).
 
