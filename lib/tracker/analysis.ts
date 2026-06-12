@@ -163,14 +163,22 @@ export function analyzePredictions(input: AnalysisInput): TrackerAnalysis {
 
     const top = ranked[0];
     const bottom = ranked[ranked.length - 1];
+    // Ties share the crown/wooden spoon — never crown one of N co-leaders.
+    const tops = ranked.filter((r) => r.pts === top.pts && r.ex === top.ex);
+    const bottoms = ranked.filter((r) => r.pts === bottom.pts && r.ex === bottom.ex);
+    const topNames = tops.map((r) => name(r.u));
+    const bottomNames = bottoms.map((r) => name(r.u));
 
     if (top.pts > 0) {
       push({
         key: "crack_del_dia",
         category: "rendimiento",
-        title: "El crack del día",
-        detail: `${name(top.u)} fue el mejor de la jornada con ${top.pts} puntos (${top.ex} acierto/s exacto/s).`,
-        subjects: [name(top.u)],
+        title: tops.length > 1 ? "Los cracks del día" : "El crack del día",
+        detail:
+          tops.length > 1
+            ? `${topNames.join(", ")} empatan como los mejores de la jornada con ${top.pts} puntos (${top.ex} acierto/s exacto/s cada uno).`
+            : `${topNames[0]} fue el mejor de la jornada con ${top.pts} puntos (${top.ex} acierto/s exacto/s).`,
+        subjects: topNames,
         magnitude: 0.92,
       });
     }
@@ -178,9 +186,12 @@ export function analyzePredictions(input: AnalysisInput): TrackerAnalysis {
       push({
         key: "desastre_del_dia",
         category: "rendimiento",
-        title: "El desastre del día",
-        detail: `${name(bottom.u)} se quedó en ${bottom.pts} puntos en la jornada, el peor de los ${ranked.length} que pronosticaron.`,
-        subjects: [name(bottom.u)],
+        title: bottoms.length > 1 ? "Los desastres del día" : "El desastre del día",
+        detail:
+          bottoms.length > 1
+            ? `${bottomNames.join(", ")} se quedaron en ${bottom.pts} puntos en la jornada, los peores de los ${ranked.length} que pronosticaron.`
+            : `${bottomNames[0]} se quedó en ${bottom.pts} puntos en la jornada, el peor de los ${ranked.length} que pronosticaron.`,
+        subjects: bottomNames,
         magnitude: 0.82,
       });
     }
@@ -456,20 +467,30 @@ export function analyzePredictions(input: AnalysisInput): TrackerAnalysis {
     const ranked = [...totalPts.entries()].sort(
       (a, b) => b[1] - a[1] || name(a[0]).localeCompare(name(b[0])),
     );
+    const leadPts = ranked[0][1];
+    const lastPts = ranked[ranked.length - 1][1];
+    const leaders = ranked.filter(([, p]) => p === leadPts).map(([u]) => name(u));
+    const lasts = ranked.filter(([, p]) => p === lastPts).map(([u]) => name(u));
     push({
       key: "lider_porra",
       category: "clasificacion",
       title: "Quién manda aquí",
-      detail: `${name(ranked[0][0])} lidera la porra con ${ranked[0][1]} puntos de pronóstico.`,
-      subjects: [name(ranked[0][0])],
+      detail:
+        leaders.length > 1
+          ? `${leaders.join(", ")} comparten el liderato de la porra con ${leadPts} puntos de pronóstico.`
+          : `${leaders[0]} lidera la porra con ${leadPts} puntos de pronóstico.`,
+      subjects: leaders,
       magnitude: 0.48,
     });
     push({
       key: "colista_porra",
       category: "clasificacion",
       title: "El farolillo rojo",
-      detail: `${name(ranked[ranked.length - 1][0])} cierra la tabla con ${ranked[ranked.length - 1][1]} puntos. El que no corre, vuela.`,
-      subjects: [name(ranked[ranked.length - 1][0])],
+      detail:
+        lasts.length > 1
+          ? `${lasts.join(", ")} cierran la tabla con ${lastPts} puntos. El que no corre, vuela.`
+          : `${lasts[0]} cierra la tabla con ${lastPts} puntos. El que no corre, vuela.`,
+      subjects: lasts,
       magnitude: 0.44,
     });
   }
@@ -492,16 +513,28 @@ export function analyzePredictions(input: AnalysisInput): TrackerAnalysis {
     { label: "Clavadas del día", value: String(totalDayExact) },
   ];
   if (dayPredictors.size > 0) {
-    const best = [...dayPredictors]
+    const dayRank = [...dayPredictors]
       .map((u) => ({ u, pts: dayPoints.get(u) ?? 0 }))
-      .sort((a, b) => b.pts - a.pts)[0];
-    if (best.pts > 0) {
-      headlineStats.push({ label: "Mejor del día", value: `${name(best.u)} (${best.pts} pts)` });
+      .sort((a, b) => b.pts - a.pts || name(a.u).localeCompare(name(b.u)));
+    const bestPts = dayRank[0].pts;
+    if (bestPts > 0) {
+      const bests = dayRank.filter((r) => r.pts === bestPts).map((r) => name(r.u));
+      headlineStats.push({
+        label: bests.length > 1 ? "Mejores del día" : "Mejor del día",
+        value: `${bests.join(", ")} (${bestPts} pts)`,
+      });
     }
   }
   if (totalPts.size > 0) {
-    const leader = [...totalPts.entries()].sort((a, b) => b[1] - a[1])[0];
-    headlineStats.push({ label: "Líder de la porra", value: `${name(leader[0])} (${leader[1]} pts)` });
+    const rank = [...totalPts.entries()].sort(
+      (a, b) => b[1] - a[1] || name(a[0]).localeCompare(name(b[0])),
+    );
+    const leadPts = rank[0][1];
+    const leaders = rank.filter(([, p]) => p === leadPts).map(([u]) => name(u));
+    headlineStats.push({
+      label: leaders.length > 1 ? "Líderes de la porra" : "Líder de la porra",
+      value: `${leaders.join(", ")} (${leadPts} pts)`,
+    });
   }
 
   return {

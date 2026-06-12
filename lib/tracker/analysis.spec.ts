@@ -172,6 +172,38 @@ test("SPOILER GUARD: predictions on unfinished matches never reach any finding",
   assert.ok(!JSON.stringify(out).includes("5-4"));
 });
 
+test("ties at the top share the crown: all co-leaders are named", () => {
+  // Ana, Bea and Carlos all nail the exact score; Dani misses.
+  const m = match({ id: "mt", status: "finished", home_score: 2, away_score: 0 });
+  const preds: AnalysisPrediction[] = [
+    { user_id: "a", match_id: "mt", home_pred: 2, away_pred: 0, points_awarded: 50 },
+    { user_id: "b", match_id: "mt", home_pred: 2, away_pred: 0, points_awarded: 50 },
+    { user_id: "c", match_id: "mt", home_pred: 2, away_pred: 0, points_awarded: 50 },
+    { user_id: "d", match_id: "mt", home_pred: 0, away_pred: 1, points_awarded: 0 },
+  ];
+  const out = analyzePredictions({
+    reportDate: "2026-06-12",
+    players,
+    matches: [m],
+    predictions: preds,
+  });
+  const byKey = new Map(out.candidateFindings.map((f) => [f.key, f]));
+
+  const crack = byKey.get("crack_del_dia");
+  assert.ok(crack);
+  assert.deepEqual(crack!.subjects.sort(), ["Ana", "Bea", "Carlos"]);
+  assert.match(crack!.detail, /empatan/);
+
+  const lider = byKey.get("lider_porra");
+  assert.ok(lider);
+  assert.deepEqual(lider!.subjects.sort(), ["Ana", "Bea", "Carlos"]);
+
+  const best = out.headlineStats.find((s) => s.label.startsWith("Mejor"));
+  assert.ok(best);
+  assert.equal(best!.label, "Mejores del día");
+  assert.match(best!.value, /Ana, Bea, Carlos/);
+});
+
 test("nobody-right match is flagged when no prediction hits the sign", () => {
   // All five predict a home win; the match ends in a draw.
   const m = match({ id: "mx", status: "finished", home_score: 1, away_score: 1 });
