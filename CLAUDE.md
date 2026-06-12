@@ -68,6 +68,20 @@ reimbursed to the organizer; 1º takes the rest. Math in `lib/pot.ts`; `pot_amou
 (`entry_fee × paid`), never hand-entered. Players see only the two prizes on `/standings`
 (see `docs/decisions/0010-pot-payout-model.md`).
 
+## Clasificaciones ciclistas — see `docs/decisions/0014-cycling-classifications.md`
+`/standings` es una "vuelta ciclista": la general se muestra en **grupos de carrera dinámicos**
+(fuga/cabeza/perseguidores/pelotón/rezagados) calculados de la distribución de puntos en
+`lib/classifications/peloton.ts` (puro, unit-testeado — el snapshot de prod 2026-06-12 es el test
+canónico). **Montaña** (maillot de lunares): suma puntos solo de partidos con
+`matches.montana_stage` (7 etapas × 3; nunca jóker —CHECK en DB—, nunca España, nunca QF/SF/F;
+auto-pick incremental `pickMontanaStages` + editor en `/admin/matches`; re-ejecutar al asignarse
+los cruces). **Regularidad** (verde): nº de eventos que puntúan (1 por pronóstico>0 en partido
+finished, bonus>0, meta volante), no la cuantía. **Maillots fijos por email** (constantes en
+`lib/classifications/config.ts`): arcoíris = JM; blanco = mejor de {Juan y Carlo, alberandu,
+Pablo M.H}; emails resueltos SOLO en servidor vía `profile_emails()` (service_role) — nunca
+exponer emails al cliente. Amarillo = líder general (empate → fecha de alta); rojo = farolillo.
+Las clasificaciones derivadas se computan en render desde datos puntuados — sin recalc nuevo.
+
 ## Luis de la Tracker (AI tracker) — see `docs/decisions/0003-luis-de-la-tracker.md`
 Daily AI "parte" parodying Spain coach Luis de la Fuente (seco, chulesco, sobrado). Pipeline:
 **pure analysis** (`lib/tracker/analysis.ts`, deterministic, unit-tested — detects cracks,

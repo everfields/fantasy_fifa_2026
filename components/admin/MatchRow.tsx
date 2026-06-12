@@ -25,6 +25,10 @@ import {
   syncNow,
   type MatchActionState,
 } from "@/app/admin/matches/actions";
+import { setMontanaStage } from "@/app/admin/matches/montana-actions";
+
+/** Etapas the admin picks from the per-match selector (target: 1..7). */
+const MONTANA_STAGES = [1, 2, 3, 4, 5, 6, 7] as const;
 
 const initial: MatchActionState = { ok: false, message: "" };
 
@@ -89,6 +93,11 @@ export function MatchRow({
           {match.is_joker ? (
             <Badge className="bg-amber-500 hover:bg-amber-500">★ Joker</Badge>
           ) : null}
+          {match.montana_stage !== null ? (
+            <Badge className="bg-rose-500 hover:bg-rose-500">
+              ⛰️ Etapa {match.montana_stage}
+            </Badge>
+          ) : null}
         </div>
       </td>
       <td className="py-3 text-right">
@@ -112,6 +121,7 @@ function EditDialog({
   const [resState, resAction] = useFormState(saveResult, initial);
   const [lockState, lockAction] = useFormState(saveLocksAt, initial);
   const [jokerState, jokerAction] = useFormState(saveJoker, initial);
+  const [montanaState, montanaAction] = useFormState(setMontanaStage, initial);
   const [syncState, syncAction] = useFormState(syncNow, initial);
   const [teamsState, teamsAction] = useFormState(saveTeams, initial);
 
@@ -252,6 +262,49 @@ function EditDialog({
             </SubmitButton>
           </div>
           {jokerState.message ? <Message state={jokerState} /> : null}
+        </form>
+
+        {/* Montaña etapa (maillot de lunares) */}
+        <form
+          action={montanaAction}
+          className="space-y-3 border-b border-border pb-5"
+        >
+          <input type="hidden" name="match_id" value={match.id} />
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                Etapa de montaña{" "}
+                {match.montana_stage !== null ? (
+                  <Badge className="ml-1 bg-rose-500 hover:bg-rose-500">
+                    ⛰️ Etapa {match.montana_stage}
+                  </Badge>
+                ) : null}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Cuenta para la clasificación de la montaña (maillot de lunares).
+                Incompatible con jóker.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                name="stage"
+                defaultValue={match.montana_stage ?? ""}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                aria-label="Etapa de montaña"
+              >
+                <option value="">Sin etapa</option>
+                {MONTANA_STAGES.map((s) => (
+                  <option key={s} value={s}>
+                    Etapa {s}
+                  </option>
+                ))}
+              </select>
+              <SubmitButton size="sm" variant="outline">
+                Guardar
+              </SubmitButton>
+            </div>
+          </div>
+          {montanaState.message ? <Message state={montanaState} /> : null}
         </form>
 
         {/* Sync now */}

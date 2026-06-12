@@ -64,6 +64,7 @@ export interface Match {
   status: MatchStatus;
   locks_at: string; // ISO; = kickoff
   is_joker: boolean; // admin-designated joker match → ×joker_multiplier for ALL users
+  montana_stage: number | null; // etapa de montaña (1..N) this match belongs to; null = not a montaña match. Mutually exclusive with is_joker (DB CHECK).
   provider_match_id: string | null; // id in the external football provider
 }
 
@@ -138,6 +139,85 @@ export interface StandingRow {
   meta_points: number; // sum of meta-volante (round-champion) awards
   adjustment_points: number; // sum of admin point_adjustments (can be negative)
   rank: number;
+}
+
+// ============================================================================
+// Cycling classifications ("la Vuelta de la Resiporra") — see
+// docs/decisions/0014-cycling-classifications.md and lib/classifications.
+// All computed in pure functions from standings + scored data; no DB state
+// except matches.montana_stage (admin-assigned montaña etapas).
+// ============================================================================
+
+/**
+ * Jerseys shown next to riders in the general classification.
+ *   amarillo — leader of the general classification
+ *   verde    — leader of the regularity classification (most scoring hits)
+ *   lunares  — leader of the montaña classification (points on etapa matches)
+ *   blanco   — best-placed young rider (fixed roster, matched by email)
+ *   arcoiris — reigning champion of the previous edition (fixed, by email)
+ *   rojo     — farolillo rojo: last place in the general (lanterne rouge)
+ */
+export type MaillotKey =
+  | "amarillo"
+  | "verde"
+  | "lunares"
+  | "blanco"
+  | "arcoiris"
+  | "rojo";
+
+/**
+ * Dynamic race groups for the general classification. NOT fixed position
+ * ranges — computed from the points distribution on every refresh
+ * (lib/classifications/peloton.ts): clusters split at significant gaps, the
+ * largest cluster is the pelotón, small clusters ahead become fuga / cabeza /
+ * perseguidores, clusters behind are rezagados.
+ */
+export type PelotonGroupKey =
+  | "fuga"
+  | "cabeza"
+  | "perseguidores"
+  | "peloton"
+  | "rezagados";
+
+/** One contiguous group of riders in the cycling-style general standings. */
+export interface PelotonGroup {
+  key: PelotonGroupKey;
+  riders: StandingRow[]; // contiguous slice of the standings, rank order
+  gapToPrev: number; // points from this group's best to the previous group's worst (0 for the front group)
+  gapToLeader: number; // points from this group's best to the overall leader
+}
+
+/**
+ * Regularity (maillot verde): counts HOW OFTEN a player scores, not how much.
+ * Every scoring event is worth exactly 1 hit — an exact scoreline counts the
+ * same as a mere sign hit, a bonus the same, a meta volante the same.
+ */
+export interface RegularityRow {
+  user_id: string;
+  display_name: string;
+  avatar: string | null;
+  hits: number; // prediction_hits + bonus_hits + meta_hits
+  prediction_hits: number; // finished-match predictions with points_awarded > 0
+  bonus_hits: number; // bonus answers with points_awarded > 0
+  meta_hits: number; // meta volante awards earned
+  rank: number; // competition ranking (ties share rank)
+}
+
+/** Montaña (maillot de lunares): points earned only on montaña etapa matches. */
+export interface MontanaRow {
+  user_id: string;
+  display_name: string;
+  avatar: string | null;
+  points: number; // sum of points_awarded on finished montaña matches
+  exact_hits: number; // exact scorelines on montaña matches (tie-breaker)
+  rank: number; // competition ranking (ties share rank)
+}
+
+/** One montaña etapa: a small bundle of matches sharing a montana_stage number. */
+export interface MontanaEtapa {
+  stage: number; // etapa number (1-based)
+  matches: Match[]; // its matches, kickoff order
+  finished: boolean; // true when every match in the etapa is finished
 }
 
 export interface ScoringConfig {

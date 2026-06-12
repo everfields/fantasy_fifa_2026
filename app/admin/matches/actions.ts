@@ -192,7 +192,19 @@ export async function saveJoker(
     .update({ is_joker })
     .eq("id", match_id);
 
-  if (error) return { ok: false, message: `Error: ${error.message}` };
+  if (error) {
+    // A montaña etapa and a joker are mutually exclusive (DB CHECK
+    // matches_montana_not_joker). Marking a montaña match as joker trips it —
+    // surface a readable message instead of the raw constraint error.
+    if (is_joker && error.message.includes("matches_montana_not_joker")) {
+      return {
+        ok: false,
+        message:
+          "Este partido es etapa de montaña — quítale la etapa antes de hacerlo jóker.",
+      };
+    }
+    return { ok: false, message: `Error: ${error.message}` };
+  }
 
   await writeAudit({
     actor,

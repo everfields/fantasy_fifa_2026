@@ -30,6 +30,7 @@ function match(
     status: hs === null ? "scheduled" : "finished",
     locks_at: "2026-06-11T19:00:00Z",
     is_joker: false,
+    montana_stage: null,
     provider_match_id: null,
     ...overrides,
   };

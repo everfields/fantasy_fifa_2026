@@ -1,13 +1,36 @@
 import { requireUser } from "@/lib/auth/guards";
-import { createClient } from "@/lib/supabase/server";
-import type { Match, Prediction, RoundAward, StandingRow } from "@/lib/types";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import type {
+  BonusAnswer,
+  MaillotKey,
+  Match,
+  Prediction,
+  RoundAward,
+  StandingRow,
+  Team,
+} from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isExact, roundKeyForMatch } from "@/lib/scoring";
 import { RankingTable } from "@/components/RankingTable";
 import { MetaVolanteBoard, type LiveRound } from "@/components/MetaVolanteBoard";
 import { PointsChart } from "@/components/PointsChart";
+import { PelotonBoard } from "@/components/PelotonBoard";
+import {
+  MontanaBoard,
+  type MontanaEtapaView,
+} from "@/components/MontanaBoard";
+import { RegularityBoard } from "@/components/RegularityBoard";
+import { MaillotBadge, MAILLOT_LABELS } from "@/components/MaillotBadge";
 
 import { PotDialog } from "@/components/PotDialog";
+
+import {
+  groupPeloton,
+  computeRegularity,
+  computeMontana,
+  assignMaillots,
+} from "@/lib/classifications";
+import { MAILLOT_BLANCO_EMAILS } from "@/lib/classifications/config";
 
 import { AppShell } from "../_components/shell";
 import { getAppSettings, getPotPrizes, matchdayKey } from "../_lib/data";
@@ -151,6 +174,29 @@ function buildLiveRound(
   };
 }
 
+/**
+ * Resolve player emails server-side via the privileged `profile_emails()` RPC,
+ * needed to assign the fixed maillots (arcoíris champion + blanco roster) and
+ * to filter the "Jóvenes" tab. Emails are PII: they NEVER reach client-component
+ * props or the rendered HTML — they are only used here to derive opaque
+ * user_id → MaillotKey[] maps. Degrades to `{}` (no fixed maillots, hidden
+ * Jóvenes tab) if the RPC/migration is not yet available.
+ */
+async function loadEmailMap(): Promise<Record<string, string>> {
+  try {
+    const svc = createServiceClient();
+    const { data, error } = await svc.rpc("profile_emails");
+    if (error || !data) return {};
+    const map: Record<string, string> = {};
+    for (const row of data as { id: string; email: string }[]) {
+      if (row?.id && row?.email) map[row.id] = row.email.toLowerCase();
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 export default async function StandingsPage() {
   const profile = await requireUser();
   const supabase = createClient();
@@ -160,6 +206,10 @@ export default async function StandingsPage() {
     { data: matchData },
     { data: predData },
     { data: awardData },
+    { data: bonusData },
+    { data: profileData },
+    { data: teamData },
+    emailByUserId,
     pot,
     settings,
   ] = await Promise.all([
@@ -170,6 +220,10 @@ export default async function StandingsPage() {
     supabase.from("matches").select("*"),
     supabase.from("predictions").select("*"),
     supabase.from("round_awards").select("*"),
+    supabase.from("bonus_answers").select("user_id, points_awarded"),
+    supabase.from("profiles").select("id, created_at"),
+    supabase.from("teams").select("id, name, code"),
+    loadEmailMap(),
     getPotPrizes(),
     getAppSettings(),
   ]);
@@ -178,9 +232,86 @@ export default async function StandingsPage() {
   const matches = (matchData as Match[] | null) ?? [];
   const predictions = (predData as Prediction[] | null) ?? [];
   const awards = (awardData as RoundAward[] | null) ?? [];
+  const bonusAnswers = (bonusData as Pick<
+    BonusAnswer,
+    "user_id" | "points_awarded"
+  >[] | null) ?? [];
+  const profiles = (profileData as { id: string; created_at: string }[] | null) ?? [];
+  const teams = (teamData as Pick<Team, "id" | "name" | "code">[] | null) ?? [];
+
+  // user_id → profiles.created_at (drives the young-rider/maillot tie-breaks).
+  const createdAt: Record<string, string> = {};
+  for (const p of profiles) createdAt[p.id] = p.created_at;
+
+  // teams lookup for montaña etapa labels.
+  const teamName = new Map(teams.map((t) => [t.id, t.name]));
 
   const series = buildSeries(matches, predictions, standings);
   const liveRound = buildLiveRound(matches, predictions, awards);
+
+  // --- Cycling classifications (pure) -------------------------------------
+  const peloton = groupPeloton(standings, {
+    signPoints: settings.scoring.sign,
+    exactPoints: settings.scoring.exact,
+  });
+  const regularity = computeRegularity({
+    standings,
+    predictions,
+    matches,
+    bonusAnswers: bonusAnswers as BonusAnswer[],
+    roundAwards: awards,
+    createdAt,
+  });
+  const montana = computeMontana({ standings, matches, predictions, createdAt });
+  const maillots = assignMaillots({
+    standings,
+    regularity,
+    montana: montana.rows,
+    emailByUserId,
+    createdAt,
+  });
+
+  // Map montaña etapas (raw Match[]) → client-safe views (no raw predictions).
+  const montanaEtapas: MontanaEtapaView[] = montana.etapas.map((e) => ({
+    stage: e.stage,
+    finished: e.finished,
+    matches: e.matches
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime(),
+      )
+      .map((m) => ({
+        id: m.id,
+        label: `${teamName.get(m.home_team) ?? "Por definir"} – ${
+          teamName.get(m.away_team) ?? "Por definir"
+        }`,
+        kickoff_at: m.kickoff_at,
+        status: m.status,
+        score:
+          m.home_score !== null && m.away_score !== null
+            ? `${m.home_score}-${m.away_score}`
+            : null,
+      })),
+  }));
+
+  // Distinct maillots present in the current standings, for a compact legend.
+  const presentMaillots = Array.from(
+    new Set(Object.values(maillots).flat()),
+  ) as MaillotKey[];
+
+  // --- Jóvenes (maillot blanco) tab ---------------------------------------
+  // Filter to the fixed young-rider roster (matched by email, server-side),
+  // re-rank 1..n preserving the general order. Hidden if the email map is empty
+  // (RPC unavailable) — never leak the roster or break the page.
+  const blancoSet = new Set(MAILLOT_BLANCO_EMAILS);
+  const youngRows: StandingRow[] = standings
+    .filter((r) => {
+      const email = emailByUserId[r.user_id];
+      return email ? blancoSet.has(email) : false;
+    })
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+  const showYoung = Object.keys(emailByUserId).length > 0;
 
   return (
     <AppShell profile={profile}>
@@ -198,18 +329,68 @@ export default async function StandingsPage() {
         </header>
 
         <Tabs defaultValue="general">
+          {/* 6 tabs — two rows of 3 on phones, inline on sm+. */}
           <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
             <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="montana">Montaña</TabsTrigger>
+            <TabsTrigger value="regularidad">Regularidad</TabsTrigger>
+            <TabsTrigger value="jovenes">Jóvenes</TabsTrigger>
             <TabsTrigger value="meta">Meta volante</TabsTrigger>
             <TabsTrigger value="evolucion">Evolución</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general" className="mt-4">
-            <RankingTable rows={standings} currentUserId={profile.id} />
+          <TabsContent value="general" className="mt-4 space-y-3">
+            <PelotonBoard
+              groups={peloton}
+              maillots={maillots}
+              currentUserId={profile.id}
+            />
+            {presentMaillots.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 text-[11px] text-muted-foreground">
+                {presentMaillots.map((k) => (
+                  <span key={k} className="inline-flex items-center gap-1.5">
+                    <MaillotBadge maillot={k} />
+                    {MAILLOT_LABELS[k]}
+                  </span>
+                ))}
+              </div>
+            )}
             {standings.length > 0 && (
-              <p className="mt-2 px-1 text-[11px] text-muted-foreground">
+              <p className="px-1 text-[11px] text-muted-foreground">
                 Desempates: puntos → aciertos exactos → bonus.
               </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="montana" className="mt-4">
+            <MontanaBoard
+              rows={montana.rows}
+              etapas={montanaEtapas}
+              currentUserId={profile.id}
+            />
+          </TabsContent>
+
+          <TabsContent value="regularidad" className="mt-4">
+            <RegularityBoard rows={regularity} currentUserId={profile.id} />
+          </TabsContent>
+
+          <TabsContent value="jovenes" className="mt-4 space-y-3">
+            <header className="px-1">
+              <h2 className="text-sm font-semibold">🤍 Mejor joven</h2>
+              <p className="text-[11px] text-muted-foreground">
+                Los tres jóvenes talentos de la porra.
+              </p>
+            </header>
+            {showYoung ? (
+              <RankingTable
+                rows={youngRows}
+                currentUserId={profile.id}
+                maillots={maillots}
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+                Clasificación por estrenar.
+              </div>
             )}
           </TabsContent>
 

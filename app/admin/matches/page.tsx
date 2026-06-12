@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { MatchRow } from "@/components/admin/MatchRow";
+import { MontanaAutoAssign } from "@/components/admin/MontanaAutoAssign";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,12 @@ export default async function AdminMatchesPage() {
 
   const all = (matches as Match[] | null) ?? [];
   const jokerCount = all.filter((m) => m.is_joker).length;
+  const montanaCount = all.filter((m) => m.montana_stage !== null).length;
+  const montanaStages = new Set(
+    all
+      .map((m) => m.montana_stage)
+      .filter((s): s is number => s !== null),
+  ).size;
 
   // Group by calendar day (the natural "matchday" grouping), preserving order.
   const groups: { key: string; matches: Match[] }[] = [];
@@ -91,6 +98,25 @@ export default async function AdminMatchesPage() {
             <li>Octavos (round_of_16): 2</li>
             <li>Cuartos: 1 · Semifinales: 1 · Final: 1</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 border-rose-200 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/30">
+        <CardContent className="space-y-3 py-4 text-sm text-rose-900 dark:text-rose-200">
+          <div>
+            <p className="font-semibold">
+              ⛰️ Etapas de montaña: {montanaCount} partidos en {montanaStages}{" "}
+              de 7 etapas
+            </p>
+            <p className="mt-1 text-rose-800 dark:text-rose-300">
+              Cada etapa agrupa ~3 partidos que puntúan para la clasificación de
+              la montaña (maillot de lunares). El auto-asignador es incremental:
+              respeta las etapas ya puestas y solo añade las nuevas, excluyendo
+              jókers, España, cuartos en adelante y partidos pasados. Un partido
+              no puede ser jóker y etapa a la vez.
+            </p>
+          </div>
+          <MontanaAutoAssign />
         </CardContent>
       </Card>
 

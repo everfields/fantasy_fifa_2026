@@ -61,6 +61,10 @@ db/
                                (applied AFTER the seed; idempotent — re-run if applied before)
     0008_live_results_cron.sql pg_cron + pg_net scheduler: 15-min poll of the
                                /api/cron/update-results endpoint (ADR-0009). Touches no app tables.
+    0009_standings_on_signup.sql trigger: re-run refresh_standings() on profile
+                               insert / display_name|avatar change (no waiting for recalc)
+    0010_cycling_classifications.sql matches.montana_stage (maillot de lunares tag) +
+                               profile_emails() service-role-only email resolver (ADR-0014)
   seed/
     teams.csv            48 teams, groups A–L (PLACEHOLDER data — see warning below)
     matches.csv          72 group matches + 32 knockout placeholders (PLACEHOLDER)
@@ -73,7 +77,7 @@ db/
 Migrations are ordered and must be applied in sequence, then the seed:
 
 ```
-0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql
+0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql  →  0009_standings_on_signup.sql  →  0010_cycling_classifications.sql
 ```
 
 > **Note `0007` runs AFTER the seed.** It seeds Spain-scorer and tournament
@@ -331,6 +335,36 @@ select cron.unschedule('live-results-poll');
 
 Re-running `0008` re-creates the job (it unschedules any existing
 `live-results-poll` first), so the migration is fully idempotent.
+
+### 0009_standings_on_signup.sql
+Adds `handle_profile_standings_refresh()` + the `profiles_refresh_standings`
+trigger so new (or renamed) profiles appear in `standings_cache` immediately,
+without waiting for the next manual recalc / auto-rescore. Additive-only,
+touches no player data, safe to re-run.
+
+### 0010_cycling_classifications.sql
+Cycling-classifications hook (see ADR-0014, in drafting). **Additive-only,
+touches no player data, fully idempotent.**
+- **`matches.montana_stage smallint`** (nullable): mountain-classification
+  (maillot de lunares) tag — etapa de montaña `1..N`; `null` = not a mountain
+  match. The mountain classification sums `predictions.points_awarded`
+  restricted to these matches (math stays in `lib/scoring`).
+- Two named CHECK constraints (added behind `drop constraint if exists`):
+  `matches_montana_stage_range` (`montana_stage is null or between 1 and 21`)
+  and `matches_montana_not_joker` (`not (is_joker and montana_stage is not
+  null)` — a joker match can never be a mountain stage).
+- Partial index `matches_montana_idx on matches (montana_stage) where
+  montana_stage is not null` — cheap per-stage sums without indexing the null
+  majority.
+- **`public.profile_emails()`** (`security definer`, `set search_path = public`,
+  `stable`): returns `(id uuid, email text)` from `auth.users`. **Locked to the
+  `service_role` only** (`revoke all … from public, anon, authenticated` +
+  `grant execute … to service_role`) — the server uses it to resolve the fixed
+  maillots (arcoíris / jóvenes) by email, robust to nick changes. Never client-
+  invocable: it would expose players' emails.
+- **RLS:** `matches` is already public-read to authenticated members;
+  `montana_stage` is intentionally public (players must see which matches score
+  for the mountain classification), so no new policy is added.
 
 ## Seed data — PLACEHOLDER WARNING
 

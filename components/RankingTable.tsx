@@ -1,9 +1,10 @@
 import * as React from "react";
 
-import type { StandingRow } from "@/lib/types";
+import type { MaillotKey, StandingRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { MaillotBadge } from "@/components/MaillotBadge";
 
 function initials(name: string) {
   return name
@@ -41,15 +42,25 @@ function RankBadge({ rank }: { rank: number }) {
  * a layout designed for it: on phones each row is rank · avatar · name with a
  * compact stats subline, and the total stays big and right-aligned; on sm+ the
  * subline is replaced by aligned stat columns.
+ *
+ * New optional props (back-compat — existing callers unaffected):
+ *   maillots    — map of userId → MaillotKey[] to render jersey badges after
+ *                 the player name, in canonical order.
+ *   hideHeader  — suppress the sm+ column-header row (used by PelotonBoard
+ *                 when each group already has its own heading).
  */
 export function RankingTable({
   rows,
   currentUserId,
   className,
+  maillots,
+  hideHeader = false,
 }: {
   rows: StandingRow[];
   currentUserId?: string;
   className?: string;
+  maillots?: Record<string, MaillotKey[]>;
+  hideHeader?: boolean;
 }) {
   if (rows.length === 0) {
     return (
@@ -67,17 +78,20 @@ export function RankingTable({
   return (
     <div className={cn("overflow-hidden rounded-xl border bg-card", className)}>
       {/* Column headers — only where the stat columns exist (sm+). */}
-      <div className="hidden items-center gap-3 border-b bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex">
-        <span className="w-7 text-center">#</span>
-        <span className="flex-1">Jugador</span>
-        <span className="w-14 text-right">Exactos</span>
-        <span className="w-14 text-right">Bonus</span>
-        <span className="w-14 text-right">★ Meta</span>
-        <span className="w-16 text-right">Total</span>
-      </div>
+      {!hideHeader && (
+        <div className="hidden items-center gap-3 border-b bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex">
+          <span className="w-7 text-center">#</span>
+          <span className="flex-1">Jugador</span>
+          <span className="w-14 text-right">Exactos</span>
+          <span className="w-14 text-right">Bonus</span>
+          <span className="w-14 text-right">★ Meta</span>
+          <span className="w-16 text-right">Total</span>
+        </div>
+      )}
       <ol className="divide-y divide-border">
         {rows.map((row) => {
           const isCurrent = currentUserId === row.user_id;
+          const jerseys = maillots?.[row.user_id];
           return (
             <li
               key={row.user_id}
@@ -96,7 +110,7 @@ export function RankingTable({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="truncate text-sm font-semibold">
                     {row.display_name}
                   </span>
@@ -104,6 +118,13 @@ export function RankingTable({
                     <Badge variant="success" className="shrink-0 px-1.5 py-0 text-[10px]">
                       Tú
                     </Badge>
+                  )}
+                  {jerseys && jerseys.length > 0 && (
+                    <span className="flex items-center gap-0.5">
+                      {jerseys.map((m) => (
+                        <MaillotBadge key={m} maillot={m} size="sm" />
+                      ))}
+                    </span>
                   )}
                 </div>
                 {/* Phone-only stats subline — replaces the hidden columns. */}
