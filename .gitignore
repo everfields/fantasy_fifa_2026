@@ -16,3 +16,4 @@ next-env.d.ts
 
 # Database backups contain user data — never commit
 /db/backups/
+mocks/

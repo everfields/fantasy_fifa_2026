@@ -21,11 +21,13 @@ import {
 } from "@/components/MontanaBoard";
 import { RegularityBoard } from "@/components/RegularityBoard";
 import { MaillotBadge, MAILLOT_LABELS } from "@/components/MaillotBadge";
+import { AstonBadge, ASTON_LABEL } from "@/components/classifications";
 
 import {
   groupPeloton,
   computeRegularity,
   computeMontana,
+  assignAstons,
   assignMaillots,
   sortGeneral,
 } from "@/lib/classifications";
@@ -272,6 +274,7 @@ export default async function StandingsPage() {
     emailByUserId,
     createdAt,
   });
+  const astonUserIds = assignAstons(standings);
 
   // Map montaña etapas (raw Match[]) → client-safe views (no raw predictions).
   const montanaEtapas: MontanaEtapaView[] = montana.etapas.map((e) => ({
@@ -351,9 +354,10 @@ export default async function StandingsPage() {
             <PelotonBoard
               groups={peloton}
               maillots={maillots}
+              astonUserIds={astonUserIds}
               currentUserId={profile.id}
             />
-            {presentMaillots.length > 0 && (
+            {(presentMaillots.length > 0 || astonUserIds.length > 0) && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 text-[11px] text-muted-foreground">
                 {presentMaillots.map((k) => (
                   <span key={k} className="inline-flex items-center gap-1.5">
@@ -361,6 +365,12 @@ export default async function StandingsPage() {
                     {MAILLOT_LABELS[k]}
                   </span>
                 ))}
+                {astonUserIds.length > 0 && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <AstonBadge size="sm" />
+                    {ASTON_LABEL}
+                  </span>
+                )}
               </div>
             )}
             {standings.length > 0 && (

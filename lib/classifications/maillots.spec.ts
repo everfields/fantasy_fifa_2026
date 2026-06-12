@@ -3,7 +3,7 @@
 import { test } from "vitest";
 import assert from "node:assert";
 
-import { assignMaillots, sortGeneral } from "./maillots";
+import { assignAstons, assignMaillots, sortGeneral } from "./maillots";
 import { MAILLOT_ARCOIRIS_EMAIL, MAILLOT_BLANCO_EMAILS } from "./config";
 import type {
   StandingRow,
@@ -236,6 +236,34 @@ test("no azul without round awards", () => {
     createdAt: { a: "2024-01-01", b: "2024-01-02" },
   });
   assert.ok(Object.values(out).every((ks) => !ks.includes("azul")));
+});
+
+// ---------------------------------------------------------------------------
+test("astons: third- and second-to-last, never the farolillo rojo", () => {
+  const general = [
+    standing("a", 100, 1),
+    standing("b", 80, 2),
+    standing("c", 60, 3),
+    standing("d", 40, 4),
+    standing("e", 20, 5),
+  ];
+  assert.deepEqual(assignAstons(general), ["c", "d"]);
+});
+
+test("astons: none with fewer than 4 riders or a scoreless race", () => {
+  assert.deepEqual(
+    assignAstons([standing("a", 9, 1), standing("b", 5, 2), standing("c", 1, 3)]),
+    [],
+  );
+  assert.deepEqual(
+    assignAstons([
+      standing("a", 0, 1),
+      standing("b", 0, 1),
+      standing("c", 0, 1),
+      standing("d", 0, 1),
+    ]),
+    [],
+  );
 });
 
 // ---------------------------------------------------------------------------

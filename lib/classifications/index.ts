@@ -21,4 +21,4 @@ export { computeRegularity } from "./regularity";
 export { computeMontana, pickMontanaStages } from "./montana";
 export type { PickableMatch } from "./montana";
 
-export { assignMaillots, sortGeneral } from "./maillots";
+export { assignAstons, assignMaillots, sortGeneral } from "./maillots";

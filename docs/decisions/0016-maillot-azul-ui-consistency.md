@@ -34,6 +34,13 @@ en un `<h1>Clasificación` + botón «€ Bote» — cabecera de escritorio en u
    (los Tabs son lo primero); el botón «€ Bote» desaparece — los premios viven ahora en una
    sección «El bote» de `/rules` (solo si `winnerPrize > 0`). `PotDialog.tsx` eliminado.
 
+5. **Coche Aston Martin (safety car)** — *añadido el mismo día*: el **antepenúltimo y el
+   penúltimo** de la general llevan un icono de monoplaza Aston Martin (verde `#069f8d` +
+   franja lima `#cedc00`, halo; ~30px, mayor que los maillots para que se lea el livery) —
+   el safety car les pisa la rueda. El **último NO** lo lleva: viste solo el farolillo rojo.
+   Puro en `assignAstons(general)` (≥4 corredores y líder con puntos > 0); badge `AstonBadge`
+   en `components/classifications.tsx`; renderizado en `PelotonBoard` + leyenda.
+
 ## Alternatives considered
 
 - **Azul solo para el líder acumulado de meta volante** — rechazado: el usuario pidió

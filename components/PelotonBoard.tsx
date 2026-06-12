@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MaillotBadge } from "@/components/MaillotBadge";
-import { initials, RankBadge as SharedRankBadge } from "@/components/classifications";
+import {
+  AstonBadge,
+  initials,
+  RankBadge as SharedRankBadge,
+} from "@/components/classifications";
 
 /* ─── group metadata ──────────────────────────────────────────────────────── */
 
@@ -124,10 +128,12 @@ function RiderRow({
   row,
   isCurrent,
   jerseys,
+  aston,
 }: {
   row: StandingRow;
   isCurrent: boolean;
   jerseys?: MaillotKey[];
+  aston?: boolean;
 }) {
   return (
     <li
@@ -158,6 +164,7 @@ function RiderRow({
               ))}
             </span>
           )}
+          {aston && <AstonBadge size="sm" />}
         </div>
         {/* Phone subline */}
         <p className="text-[11px] tabular-nums text-muted-foreground sm:hidden">
@@ -200,10 +207,13 @@ function RiderRow({
 export function PelotonBoard({
   groups,
   maillots,
+  astonUserIds,
   currentUserId,
 }: {
   groups: PelotonGroup[];
   maillots: Record<string, MaillotKey[]>;
+  /** Riders trailed by the Aston Martin safety car (see assignAstons). */
+  astonUserIds?: string[];
   currentUserId?: string;
 }) {
   if (groups.length === 0 || groups.every((g) => g.riders.length === 0)) {
@@ -217,6 +227,8 @@ export function PelotonBoard({
   // Is there exactly one peloton group and no others (solo group edge-case)?
   const onlyPeloton =
     groups.length === 1 && groups[0].key === "peloton";
+
+  const astons = new Set(astonUserIds ?? []);
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
@@ -251,6 +263,7 @@ export function PelotonBoard({
                   row={row}
                   isCurrent={currentUserId === row.user_id}
                   jerseys={maillots[row.user_id]}
+                  aston={astons.has(row.user_id)}
                 />
               ))}
             </ol>

@@ -50,6 +50,17 @@ export function sortGeneral(
   );
 }
 
+/**
+ * Riders shadowed by the Aston Martin safety car: the third-to-last and
+ * second-to-last of the general (display order — pass a sortGeneral result).
+ * The very last is NOT included (he wears the farolillo rojo alone). Only
+ * once the race has data: >= 4 riders and the leader has points.
+ */
+export function assignAstons(general: StandingRow[]): string[] {
+  if (general.length < 4 || general[0].total_points <= 0) return [];
+  return general.slice(-3, -1).map((s) => s.user_id);
+}
+
 export function assignMaillots(input: {
   standings: StandingRow[];
   regularity: RegularityRow[];

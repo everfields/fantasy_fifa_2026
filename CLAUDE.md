@@ -84,7 +84,9 @@ finished, bonus>0, meta volante), no la cuantía. **Maillots fijos por email** (
 Pablo M.H}; emails resueltos SOLO en servidor vía `profile_emails()` (service_role) — nunca
 exponer emails al cliente. Amarillo = líder general (empate → fecha de alta); rojo = farolillo;
 **azul** = ganador de (al menos) una ronda de meta volante — varios corredores pueden vestirlo
-(`assignMaillots` con `roundAwards`, ADR-0016). Las clasificaciones derivadas se computan en
+(`assignMaillots` con `roundAwards`, ADR-0016). **Coche Aston Martin** (safety car) = antepenúltimo
+y penúltimo de la general (`assignAstons`; ≥4 corredores y líder con puntos); el último lleva SOLO
+el farolillo rojo. Las clasificaciones derivadas se computan en
 render desde datos puntuados — sin recalc nuevo. **UI de clasificaciones (ADR-0016):**
 terminología «corredor» (nunca «jugador» fuera del admin); `RankBadge`/`initials` compartidos en
 `components/classifications.tsx` y chrome unificado entre tableros; en móvil `/standings` no
