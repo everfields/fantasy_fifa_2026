@@ -4,6 +4,7 @@ import type { MatchStatus, MontanaRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { MaillotBadge } from "@/components/MaillotBadge";
 
 /* ─── types ──────────────────────────────────────────────────────────────── */
 
@@ -119,23 +120,9 @@ export function MontanaBoard({
       <div className="overflow-hidden rounded-xl border bg-card">
         {/* Polka-dot accent header */}
         <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
-          {/* Mini polka-dot strip */}
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            aria-hidden
-            className="shrink-0"
-          >
-            <rect width="20" height="20" rx="3" fill="white" stroke="hsl(var(--border))" strokeWidth="1" />
-            <circle cx="5" cy="5" r="2.2" fill="#dc2626" />
-            <circle cx="15" cy="5" r="2.2" fill="#dc2626" />
-            <circle cx="10" cy="11" r="2.2" fill="#dc2626" />
-            <circle cx="5" cy="17" r="2.2" fill="#dc2626" />
-            <circle cx="15" cy="17" r="2.2" fill="#dc2626" />
-          </svg>
+          <MaillotBadge maillot="lunares" size="md" />
           <span className="text-[13px] font-bold uppercase tracking-wider">
-            ⛰️ Rey de la montaña
+            Rey de la montaña
           </span>
         </div>
 

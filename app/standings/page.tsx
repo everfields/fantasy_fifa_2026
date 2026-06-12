@@ -381,7 +381,10 @@ export default async function StandingsPage() {
 
           <TabsContent value="jovenes" className="mt-4 space-y-3">
             <header className="px-1">
-              <h2 className="text-sm font-semibold">🤍 Mejor joven</h2>
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <MaillotBadge maillot="blanco" />
+                Mejor joven
+              </h2>
               <p className="text-[11px] text-muted-foreground">
                 Los tres jóvenes talentos de la porra.
               </p>
