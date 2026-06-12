@@ -3,7 +3,7 @@
 import { test } from "vitest";
 import assert from "node:assert";
 
-import { analyzePredictions } from "./analysis";
+import { analyzePredictions, jornadaOf } from "./analysis";
 import type {
   AnalysisInput,
   AnalysisMatch,
@@ -24,7 +24,8 @@ function match(over: Partial<AnalysisMatch> & { id: string }): AnalysisMatch {
     away_label: "Brasil",
     stage: "group",
     matchday: 1,
-    kickoff_at: "2026-06-12T18:00:00Z",
+    // 21:00 in Spain on the 11th — "anoche" for the June 12 jornada.
+    kickoff_at: "2026-06-11T19:00:00Z",
     home_score: null,
     away_score: null,
     status: "scheduled",
@@ -105,6 +106,40 @@ test("at most two findings per category (diversity cap)", () => {
     counts.set(f.category, (counts.get(f.category) ?? 0) + 1);
   }
   for (const [, n] of counts) assert.ok(n <= 2);
+});
+
+test("jornada = Spanish pool day: anoche + madrugada, cut at noon Madrid", () => {
+  // 21:00 Spain on the 11th and 04:00 Spain on the 12th → same jornada (06-12).
+  assert.equal(jornadaOf("2026-06-11T19:00:00Z"), "2026-06-12");
+  assert.equal(jornadaOf("2026-06-12T02:00:00Z"), "2026-06-12");
+  // 21:00 Spain on the 12th already belongs to the next morning's report.
+  assert.equal(jornadaOf("2026-06-12T19:00:00Z"), "2026-06-13");
+
+  // Both halves of the jornada are analyzed together.
+  const evening = match({
+    id: "ev",
+    status: "finished",
+    kickoff_at: "2026-06-11T19:00:00Z",
+    home_score: 2,
+    away_score: 0,
+  });
+  const madrugada = match({
+    id: "ma",
+    status: "finished",
+    kickoff_at: "2026-06-12T02:00:00Z",
+    home_score: 2,
+    away_score: 1,
+  });
+  const out = analyzePredictions({
+    reportDate: "2026-06-12",
+    players,
+    matches: [evening, madrugada],
+    predictions: [
+      { user_id: "a", match_id: "ev", home_pred: 2, away_pred: 0, points_awarded: 50 },
+      { user_id: "a", match_id: "ma", home_pred: 2, away_pred: 1, points_awarded: 50 },
+    ],
+  });
+  assert.equal(out.matchesAnalyzed, 2);
 });
 
 test("SPOILER GUARD: predictions on unfinished matches never reach any finding", () => {

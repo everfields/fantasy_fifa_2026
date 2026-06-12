@@ -22,6 +22,7 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | [0010](0010-pot-payout-model.md) | 2026-06-10 | Pot payout model | Accepted | 20 € entry fee; 2º gets stake back; 20 € domain + infra costs reimbursed to the organizer; 1º takes the rest; `pot_amount` derived (`entry_fee × paid`); players see only the two prizes on `/standings` |
 | [0011](0011-mundial-section.md) | 2026-06-10 | "Mundial" section — local standings + bracket from matches | Accepted | `/mundial`: group tables computed purely from `matches` (FIFA criteria; non-computable ties flagged), best-thirds ranking, bracket rendered from knockout rows; admin assigns knockout teams (`saveTeams`); no LLM; vitest infra fixed (`npm test`, 139 tests) |
 | [0012](0012-matchday-ops.md) | 2026-06-11 | Matchday ops — auto-rescore on manual result save + live meta volante view | Accepted | «Sync ahora» body fix (`matchId`); `saveResult` rescores its match idempotently + refreshes standings (full recalc still owns jokers/bonus/meta volante); Meta volante tab shows a provisional current-round standing computed from scored predictions (awards still granted only at recalc) |
+| [0013](0013-tracker-jornada-espanola.md) | 2026-06-12 | Tracker — jornada española (anoche + madrugada) + guardia anti-spoilers | Accepted | El parte de fecha D cubre kickoffs en [D-1 12:00, D 12:00) hora Madrid (`jornadaOf` = +14h); solo predicciones de partidos `finished` entran al análisis (filtro en motor y cron); HARD RULE: nunca revelar nada de pronósticos pendientes |
 
 ## How to add a decision
 

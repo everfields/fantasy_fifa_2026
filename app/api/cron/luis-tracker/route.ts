@@ -22,7 +22,7 @@
 import { NextResponse } from "next/server";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { analyzePredictions } from "@/lib/tracker/analysis";
+import { analyzePredictions, jornadaOf } from "@/lib/tracker/analysis";
 import type {
   AnalysisMatch,
   AnalysisPlayer,
@@ -120,12 +120,14 @@ export async function GET(req: Request) {
     }));
 
     // --- Pick the report day ----------------------------------------------
+    // A "jornada" is the Spanish pool day (anoche + madrugada), not the UTC
+    // calendar day of the kickoff — see jornadaOf in lib/tracker/analysis.
     const finishedDays = matches
       .filter(
         (m) =>
           m.status === "finished" && m.home_score !== null && m.away_score !== null,
       )
-      .map((m) => m.kickoff_at.slice(0, 10));
+      .map((m) => jornadaOf(m.kickoff_at));
 
     const reportDate = dateParam ?? (finishedDays.length ? finishedDays.sort().at(-1)! : null);
 

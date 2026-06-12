@@ -60,7 +60,18 @@ export interface AnalysisInput {
 // Small helpers
 // ----------------------------------------------------------------------------
 
-const dayOf = (iso: string): string => iso.slice(0, 10);
+// "Jornada" = the pool's day in Spain, not the UTC calendar day. The Mundial is
+// played in North America, so one matchday there spans two Spanish dates: the
+// evening games ("anoche") plus the small-hours games ("madrugada"). A report
+// for date D covers kickoffs in [D-1 12:00, D 12:00) Europe/Madrid — i.e. what
+// players wake up to on the morning of D. Madrid is CEST (UTC+2) for the whole
+// tournament (Jun 11 – Jul 19, 2026), so shifting the kickoff by +14h (2h to
+// Madrid + 12h to move the noon cut to midnight) and taking the UTC date gives
+// the jornada it belongs to.
+const JORNADA_SHIFT_MS = 14 * 3600 * 1000;
+export const jornadaOf = (kickoffIso: string): string =>
+  new Date(new Date(kickoffIso).getTime() + JORNADA_SHIFT_MS).toISOString().slice(0, 10);
+const dayOf = jornadaOf;
 const isFinished = (m: AnalysisMatch): boolean =>
   m.status === "finished" && m.home_score !== null && m.away_score !== null;
 const matchLabel = (m: AnalysisMatch): string =>

@@ -78,7 +78,9 @@ invents numbers/names** — new insights = new patterns in `analysis.ts` (+ a te
 embellishment. **HARD RULE: no spoilers** — the tracker analyzes only what already happened:
 predictions on non-`finished` matches never enter the analysis (filtered in `analysis.ts` AND in
 the cron loader; regression test in `analysis.spec.ts`). Revealing anything about a pending pick
-(scoreline, sign, consensus, averages, repeated lines) lets players copy strategies before `locks_at`. Trigger: daily Vercel cron `GET /api/cron/luis-tracker` (`CRON_SECRET`; idempotent
+(scoreline, sign, consensus, averages, repeated lines) lets players copy strategies before `locks_at`.
+**Jornada = día español:** the report for date D covers kickoffs in [D-1 12:00, D 12:00) Madrid
+(`jornadaOf`, fixed +14h shift — anoche + madrugada together), not the UTC calendar day (ADR-0013). Trigger: daily Vercel cron `GET /api/cron/luis-tracker` (`CRON_SECRET`; idempotent
 upsert; `?date=`/`?force`). No key / API failure → deterministic `analysis_only` report. The single
 daily `crons` entry is Hobby-legal and does **not** resurrect live-data polling (ADR-0002 stands).
 
