@@ -3,7 +3,7 @@
 import { test } from "vitest";
 import assert from "node:assert";
 
-import { assignMaillots } from "./maillots";
+import { assignMaillots, sortGeneral } from "./maillots";
 import { MAILLOT_ARCOIRIS_EMAIL, MAILLOT_BLANCO_EMAILS } from "./config";
 import type {
   StandingRow,
@@ -157,6 +157,35 @@ test("no amarillo/rojo when nobody has points; arcoiris still given", () => {
   assert.ok(!out["a"] || !out["a"].includes("amarillo"));
   assert.ok(Object.values(out).every((ks) => !ks.includes("rojo")));
   assert.ok(out["jm"].includes("arcoiris"));
+});
+
+// ---------------------------------------------------------------------------
+test("sortGeneral: rank ties order by created_at — amarillo first, rojo last", () => {
+  const standings = [
+    standing("nando", 100, 1),
+    standing("alvaro", 100, 1),
+    standing("juan", 100, 1),
+  ];
+  const createdAt = {
+    nando: "2024-01-03",
+    alvaro: "2024-01-01",
+    juan: "2024-01-05",
+  };
+  const sorted = sortGeneral(standings, createdAt);
+  assert.deepEqual(
+    sorted.map((s) => s.user_id),
+    ["alvaro", "nando", "juan"],
+  );
+  const out = assignMaillots({
+    standings,
+    regularity: [],
+    montana: [],
+    emailByUserId: {},
+    createdAt,
+  });
+  // The display order agrees with the jerseys: first row = amarillo, last = rojo.
+  assert.ok(out[sorted[0].user_id].includes("amarillo"));
+  assert.ok(out[sorted[sorted.length - 1].user_id].includes("rojo"));
 });
 
 // ---------------------------------------------------------------------------

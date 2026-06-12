@@ -29,6 +29,7 @@ import {
   computeRegularity,
   computeMontana,
   assignMaillots,
+  sortGeneral,
 } from "@/lib/classifications";
 import { MAILLOT_BLANCO_EMAILS } from "@/lib/classifications/config";
 
@@ -228,7 +229,7 @@ export default async function StandingsPage() {
     getAppSettings(),
   ]);
 
-  const standings = (standingsData as StandingRow[] | null) ?? [];
+  const rawStandings = (standingsData as StandingRow[] | null) ?? [];
   const matches = (matchData as Match[] | null) ?? [];
   const predictions = (predData as Prediction[] | null) ?? [];
   const awards = (awardData as RoundAward[] | null) ?? [];
@@ -242,6 +243,10 @@ export default async function StandingsPage() {
   // user_id → profiles.created_at (drives the young-rider/maillot tie-breaks).
   const createdAt: Record<string, string> = {};
   for (const p of profiles) createdAt[p.id] = p.created_at;
+
+  // Order rank ties by created_at — same tie-break as the maillots, so the
+  // amarillo renders first and the farolillo rojo last.
+  const standings = sortGeneral(rawStandings, createdAt);
 
   // teams lookup for montaña etapa labels.
   const teamName = new Map(teams.map((t) => [t.id, t.name]));

@@ -27,6 +27,26 @@ import type {
 } from "@/lib/types";
 import { MAILLOT_ARCOIRIS_EMAIL, MAILLOT_BLANCO_EMAILS } from "./config";
 
+/**
+ * Canonical display order of the general: rank asc, total desc, then
+ * created_at asc to break full ties. This is the SAME tie-break used to award
+ * the maillot amarillo (smallest created_at first) and the farolillo rojo
+ * (largest created_at last), so the amarillo always renders at the top and the
+ * rojo at the bottom.
+ */
+export function sortGeneral(
+  standings: StandingRow[],
+  createdAt: Record<string, string>,
+): StandingRow[] {
+  const createdOf = (u: string): string => createdAt[u] ?? "";
+  return [...standings].sort(
+    (a, b) =>
+      a.rank - b.rank ||
+      b.total_points - a.total_points ||
+      (createdOf(a.user_id) < createdOf(b.user_id) ? -1 : 1),
+  );
+}
+
 export function assignMaillots(input: {
   standings: StandingRow[];
   regularity: RegularityRow[];
@@ -44,14 +64,8 @@ export function assignMaillots(input: {
 
   const createdOf = (u: string): string => createdAt[u] ?? "";
 
-  // General leader = rank order. Defensive sort by rank asc, total desc, then
-  // created_at asc to break full ties deterministically.
-  const general = [...standings].sort(
-    (a, b) =>
-      a.rank - b.rank ||
-      b.total_points - a.total_points ||
-      (createdOf(a.user_id) < createdOf(b.user_id) ? -1 : 1),
-  );
+  // General leader = rank order, ties broken by created_at (see sortGeneral).
+  const general = sortGeneral(standings, createdAt);
 
   // amarillo
   if (general.length > 0 && general[0].total_points > 0) {
