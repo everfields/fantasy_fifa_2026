@@ -107,6 +107,36 @@ test("at most two findings per category (diversity cap)", () => {
   for (const [, n] of counts) assert.ok(n <= 2);
 });
 
+test("SPOILER GUARD: predictions on unfinished matches never reach any finding", () => {
+  // Eva has 6 future predictions, all the same exaggerated 5-4 scoreline.
+  // Without the guard, the profile findings (artillero / corta-pega / etc.)
+  // would publish her pending strategy. None of them may surface.
+  const fixture = herdFixture();
+  const future = Array.from({ length: 6 }, (_, i) =>
+    match({ id: `f${i}`, status: "scheduled", kickoff_at: "2026-07-01T18:00:00Z" }),
+  );
+  const futurePreds: AnalysisPrediction[] = future.map((m) => ({
+    user_id: "e",
+    match_id: m.id,
+    home_pred: 5,
+    away_pred: 4,
+    points_awarded: null,
+  }));
+  const out = analyzePredictions({
+    ...fixture,
+    matches: [...fixture.matches, ...future],
+    predictions: [...fixture.predictions, ...futurePreds],
+  });
+  const baseline = analyzePredictions(fixture);
+  // Identical output to the run without any future predictions…
+  assert.equal(
+    JSON.stringify(out.candidateFindings),
+    JSON.stringify(baseline.candidateFindings),
+  );
+  // …and no trace of the pending scoreline anywhere in the report.
+  assert.ok(!JSON.stringify(out).includes("5-4"));
+});
+
 test("nobody-right match is flagged when no prediction hits the sign", () => {
   // All five predict a home win; the match ends in a draw.
   const m = match({ id: "mx", status: "finished", home_score: 1, away_score: 1 });

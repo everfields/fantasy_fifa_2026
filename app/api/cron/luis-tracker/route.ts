@@ -159,15 +159,27 @@ export async function GET(req: Request) {
       (profilesRes.data ?? []) as Array<{ id: string; display_name: string }>
     ).map((p) => ({ user_id: p.id, display_name: p.display_name }));
 
+    // Spoiler guard (defense in depth — analyzePredictions filters too):
+    // never hand the pipeline predictions for matches that aren't finished.
+    const finishedIds = new Set(
+      matches
+        .filter(
+          (m) =>
+            m.status === "finished" && m.home_score !== null && m.away_score !== null,
+        )
+        .map((m) => m.id),
+    );
     const predictions: AnalysisPrediction[] = (
       (predsRes.data ?? []) as AnalysisPrediction[]
-    ).map((p) => ({
-      user_id: p.user_id,
-      match_id: p.match_id,
-      home_pred: p.home_pred,
-      away_pred: p.away_pred,
-      points_awarded: p.points_awarded,
-    }));
+    )
+      .filter((p) => finishedIds.has(p.match_id))
+      .map((p) => ({
+        user_id: p.user_id,
+        match_id: p.match_id,
+        home_pred: p.home_pred,
+        away_pred: p.away_pred,
+        points_awarded: p.points_awarded,
+      }));
 
     const analysis = analyzePredictions({
       reportDate,

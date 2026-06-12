@@ -98,13 +98,19 @@ const SIGN_ES: Record<OutcomeSign, string> = {
  * sparse data yields fewer (or zero) candidates — never throws.
  */
 export function analyzePredictions(input: AnalysisInput): TrackerAnalysis {
-  const { reportDate, players, matches, predictions } = input;
+  const { reportDate, players, matches } = input;
 
   const nameOf = new Map(players.map((p) => [p.user_id, p.display_name]));
   const name = (id: string): string => nameOf.get(id) ?? "Anónimo";
 
   const finishedAll = matches.filter(isFinished);
   const finishedById = new Map(finishedAll.map((m) => [m.id, m]));
+
+  // SPOILER GUARD: only predictions on finished matches enter the analysis.
+  // Predictions are editable until kickoff — leaking anything about a pending
+  // pick (even aggregates like avg goals or a repeated scoreline) lets players
+  // copy strategies. Everything below must read from this filtered set.
+  const predictions = input.predictions.filter((p) => finishedById.has(p.match_id));
   const dayMatches = finishedAll.filter((m) => dayOf(m.kickoff_at) === reportDate);
   const dayMatchIds = new Set(dayMatches.map((m) => m.id));
 
