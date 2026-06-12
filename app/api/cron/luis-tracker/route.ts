@@ -89,7 +89,9 @@ export async function GET(req: Request) {
       supabase
         .from("predictions")
         .select("user_id, match_id, home_pred, away_pred, points_awarded"),
-      supabase.from("profiles").select("id, display_name").eq("role", "player"),
+      // All profiles — admins play the pool too; the analysis only ever sees
+      // whoever actually has predictions, so non-playing accounts are inert.
+      supabase.from("profiles").select("id, display_name"),
     ]);
 
     if (matchesRes.error) throw matchesRes.error;
