@@ -404,7 +404,7 @@ export default async function StandingsPage() {
               awards={awards}
               standings={standings}
               currentUserId={profile.id}
-              pointsPerRound={settings.meta_volante_points}
+              distribution={settings.meta_volante_distribution}
               live={liveRound}
             />
           </TabsContent>

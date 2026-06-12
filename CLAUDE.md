@@ -57,11 +57,14 @@ blocks in `/bonus` and `/admin/bonus` (see `docs/decisions/0006-bonus-categories
 `point_adjustments` (reason required, admin-only writes, UI in `/admin/users`); summed into
 standings by `refresh_standings()`. Never hand-edit `points_awarded` — recalc reverts it.
 
-**Meta volante (round champion):** most prediction points in a round earns `meta_volante_points`
-(default 100), stored in `round_awards` and summed into `standings_cache.meta_points` + total by
-`refresh_standings()`. Rounds: group-md1/2/3 (`matches.matchday`) + each knockout stage
-(third_place folds into final). Ties break by exact hits in the round, then split. Computed in the
-MANUAL recalc only (`pickRoundWinners` in `lib/scoring`).
+**Meta volante (round positions):** each round pays a prize per POSITION from
+`app_settings.meta_volante_distribution` (defaults 1º=100, 2º=50, 3º=50, 4º–7º=20; beyond → 0;
+`meta_volante_points` is deprecated, mirrored to `distribution[0]`). Ranking = round prediction
+points desc → exact hits desc; full ties split the tied positions' prize sum (`floor`, remainder
+dropped); only players with `round_points > 0` earn. Stored in `round_awards`, summed into
+`standings_cache.meta_points` + total by `refresh_standings()`. Rounds: group-md1/2/3
+(`matches.matchday`) + each knockout stage (third_place folds into final). Computed in the MANUAL
+recalc only (`pickRoundAwards` in `lib/scoring`). See `docs/decisions/0015`.
 
 **Pot (money):** `entry_fee` 20 €/player; 2º gets the stake back; 20 € `pot_expenses` (domain + infra)
 reimbursed to the organizer; 1º takes the rest. Math in `lib/pot.ts`; `pot_amount` is derived

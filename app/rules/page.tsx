@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { requireUser } from "@/lib/auth/guards";
+import { formatDistribution } from "@/lib/scoring";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { AppShell } from "../_components/shell";
@@ -124,14 +125,20 @@ export default async function RulesPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span aria-hidden>🏁</span> Meta volante
-                  <PointsPill>+{settings.meta_volante_points}</PointsPill>
+                  <PointsPill>
+                    hasta +{settings.meta_volante_distribution[0] ?? 0}
+                  </PointsPill>
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                El que más puntos de pronósticos consiga en cada ronda (cada
-                jornada de grupos y cada eliminatoria) se lleva el premio de
-                campeón de ronda. Empate: gana quien tenga más plenos en la
-                ronda; si persiste, se reparte.
+                En cada ronda (cada jornada de grupos y cada eliminatoria) se
+                reparten puntos extra según tu posición por puntos de
+                pronósticos:{" "}
+                <b className="text-foreground">
+                  {formatDistribution(settings.meta_volante_distribution)}
+                </b>
+                . Empate: manda quien tenga más plenos en la ronda; si
+                persiste, se reparte el premio de las posiciones empatadas.
               </CardContent>
             </Card>
             <Card>

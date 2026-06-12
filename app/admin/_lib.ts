@@ -60,6 +60,11 @@ function shapeSettings(raw: Record<string, unknown>): AppSettingsStored {
     meta_volante_points:
       (raw.meta_volante_points as number) ??
       DEFAULT_APP_SETTINGS.meta_volante_points,
+    meta_volante_distribution:
+      Array.isArray(raw.meta_volante_distribution) &&
+      raw.meta_volante_distribution.length > 0
+        ? (raw.meta_volante_distribution as number[])
+        : DEFAULT_APP_SETTINGS.meta_volante_distribution,
     jokers_per_user:
       (raw.jokers_per_user as number) ?? DEFAULT_APP_SETTINGS.jokers_per_user,
     pot_amount: (raw.pot_amount as number) ?? DEFAULT_APP_SETTINGS.pot_amount,

@@ -92,10 +92,12 @@ export interface BonusQuestion {
 }
 
 /**
- * A "meta volante" (round-champion) award. The player with the most prediction
- * points within a round earns `points` (config: meta_volante_points). Ties
- * break by exact hits in that round, then split. Computed during recalc and
- * summed into standings. Not predicted by users — earned by performance.
+ * A "meta volante" (round-position) award. Players are ranked by prediction
+ * points within a round and each paying position earns its prize from
+ * `meta_volante_distribution` (default 1º=100, 2º=50, 3º=50, 4º–7º=20). Ties
+ * break by exact hits in the round; full ties split the tied positions' prizes.
+ * Computed during recalc and summed into standings. Not predicted by users —
+ * earned by performance. One row per (round, awarded user).
  */
 export interface RoundAward {
   id: string;
@@ -234,7 +236,8 @@ export interface AppSettings {
   scoring: ScoringConfig;
   bonus_default_points: number; // default points for a new bonus question
   group_winner_points: number; // points per auto-generated group-winner bonus question
-  meta_volante_points: number; // round-champion (meta volante) award
+  meta_volante_points: number; // DEPRECATED: mirror of meta_volante_distribution[0]; scoring reads the distribution
+  meta_volante_distribution: number[]; // meta-volante prize per round position ([1º, 2º, 3º, ...]); positions beyond the array earn nothing
   jokers_per_user: number; // DEPRECATED: jokers are now assigned per-match by the admin
   pot_amount: number; // total collected; kept in sync with entry_fee × paid players
   entry_fee: number; // € per player; the runner-up gets exactly this back
@@ -334,6 +337,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   bonus_default_points: 100,
   group_winner_points: 50,
   meta_volante_points: 100,
+  meta_volante_distribution: [100, 50, 50, 20, 20, 20, 20],
   jokers_per_user: 0,
   pot_amount: 0,
   entry_fee: 20,

@@ -148,7 +148,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Meta volante"
             value={standing ? String(standing.meta_points) : "0"}
-            sub="puntos de campeón de ronda"
+            sub="puntos por posición en rondas"
           />
         </div>
 

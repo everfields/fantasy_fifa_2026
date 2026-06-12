@@ -12,7 +12,7 @@
 
 import {
   recomputePredictionPoints,
-  pickRoundWinners,
+  pickRoundAwards,
   roundKeyForMatch,
 } from "@/lib/scoring";
 import type {
@@ -494,7 +494,8 @@ export interface RoundAwardsResult {
  * Per eligible round we build per-user entries:
  *   round_points = sum of the user's points_awarded over the round's finished
  *                  matches; exact_hits = count of exact-scoreline predictions
- *   in those matches. `pickRoundWinners` then selects the champion(s).
+ *   in those matches. `pickRoundAwards` then ranks them and assigns each
+ *   paying position its prize from `distribution` ([1º, 2º, 3º, ...]).
  *
  * IDEMPOTENT persistence: for each eligible round we compare desired winners to
  * the stored rows. We upsert changed/added rows and delete stragglers. Running
@@ -503,7 +504,7 @@ export interface RoundAwardsResult {
 export async function recomputeRoundAwards(
   supabase: ServiceClient,
   scoring: ScoringConfig,
-  metaVolantePoints: number,
+  distribution: readonly number[],
   opts: { dryRun?: boolean } = {},
 ): Promise<RoundAwardsResult> {
   const empty: RoundAwardsResult = {
@@ -629,7 +630,7 @@ export async function recomputeRoundAwards(
         exact_hits: v.exact_hits,
       }),
     );
-    const winners: RoundWinner[] = pickRoundWinners(entries, metaVolantePoints);
+    const winners: RoundWinner[] = pickRoundAwards(entries, distribution);
     for (const w of winners) {
       desired.push({
         round_key: key,

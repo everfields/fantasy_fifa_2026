@@ -21,7 +21,22 @@ const scoringSchema = z.object({
   diff_bonus_enabled: z.coerce.boolean(),
   bonus_default_points: z.coerce.number().int().min(0).max(100_000),
   group_winner_points: z.coerce.number().int().min(0).max(100_000),
-  meta_volante_points: z.coerce.number().int().min(0).max(100_000),
+  // Comma-separated prizes per round position ("100, 50, 50, 20, 20, 20, 20").
+  meta_volante_distribution: z
+    .string()
+    .transform((v) => v.split(/[,;\s]+/).filter(Boolean).map(Number))
+    .pipe(
+      z
+        .array(
+          z
+            .number({ invalid_type_error: "Solo números separados por comas." })
+            .int()
+            .min(0)
+            .max(100_000),
+        )
+        .min(1, "Indica al menos un premio.")
+        .max(30),
+    ),
   pot_amount: z.coerce.number().min(0).max(1_000_000),
   season_locked: z.coerce.boolean(),
 });
@@ -54,7 +69,7 @@ export async function saveScoring(
     diff_bonus_enabled: checkbox(form, "diff_bonus_enabled"),
     bonus_default_points: form.get("bonus_default_points"),
     group_winner_points: form.get("group_winner_points"),
-    meta_volante_points: form.get("meta_volante_points"),
+    meta_volante_distribution: form.get("meta_volante_distribution"),
     pot_amount: form.get("pot_amount"),
     season_locked: checkbox(form, "season_locked"),
   });
@@ -86,7 +101,10 @@ export async function saveScoring(
     },
     bonus_default_points: d.bonus_default_points,
     group_winner_points: d.group_winner_points,
-    meta_volante_points: d.meta_volante_points,
+    // meta_volante_points is deprecated — kept mirrored to the 1º prize for
+    // back-compat with any stale reader of the blob.
+    meta_volante_points: d.meta_volante_distribution[0],
+    meta_volante_distribution: d.meta_volante_distribution,
     pot_amount: d.pot_amount,
     season_locked: d.season_locked,
   };

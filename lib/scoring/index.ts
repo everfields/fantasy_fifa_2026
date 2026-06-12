@@ -324,65 +324,100 @@ export interface RoundWinner {
 }
 
 /**
- * Pick the round champion(s) (meta volante) for a single round.
+ * Pick the meta-volante awardees for a single round given a prize
+ * DISTRIBUTION per position (e.g. `[100, 50, 50, 20, 20, 20, 20]` →
+ * 1º=100, 2º=3º=50, 4º–7º=20; positions beyond the array earn nothing).
  *
  * Selection:
- *  1. Find the max `round_points`. Candidates = all entries with that max.
- *  2. If the max is <= 0 (nobody scored positively in the round), there is no
- *     champion → return [].
- *  3. Single candidate → it wins `awardPoints`.
- *  4. Tie on `round_points` → break by max `exact_hits` among the candidates.
- *     A single entry with the most exact hits wins `awardPoints`.
- *  5. STILL tied (same round_points AND same exact_hits, n entries) → SPLIT:
- *     each tied winner gets `Math.floor(awardPoints / n)`. Integer points only;
- *     any remainder is dropped (documented behavior — keeps standings integer
- *     and avoids fractional awards / rounding disputes).
+ *  1. Only entries with `round_points > 0` compete — a player who scored
+ *     nothing in the round never occupies a paying position (so a round where
+ *     nobody scored positively awards nothing, as before).
+ *  2. Rank by `round_points` desc, ties broken by `exact_hits` desc.
+ *  3. Entries STILL tied (same round_points AND same exact_hits, n entries)
+ *     occupy n consecutive positions and SPLIT the sum of those positions'
+ *     prizes: each gets `Math.floor(sum / n)`. Integer points only; any
+ *     remainder is dropped (documented behavior — keeps standings integer and
+ *     avoids fractional awards / rounding disputes).
+ *  4. A tie group whose positions fall entirely beyond the distribution earns
+ *     nothing and produces no rows.
  *
- * Pure & deterministic: output depends only on the inputs. Winner order follows
- * the input order of the tied entries.
+ * Pure & deterministic: output depends only on the inputs. Order follows the
+ * ranking; within a full tie it follows the input order of the tied entries.
+ */
+export function pickRoundAwards(
+  entries: readonly RoundEntry[],
+  distribution: readonly number[],
+): RoundWinner[] {
+  // Stable sort: round_points desc, then exact_hits desc; full ties keep input order.
+  const ranked = entries
+    .filter((e) => e.round_points > 0)
+    .sort((a, b) => b.round_points - a.round_points || b.exact_hits - a.exact_hits);
+
+  const awards: RoundWinner[] = [];
+  let position = 0;
+  while (position < ranked.length && position < distribution.length) {
+    // Collect the full-tie group occupying positions [position, position + n).
+    const head = ranked[position];
+    let n = 1;
+    while (
+      position + n < ranked.length &&
+      ranked[position + n].round_points === head.round_points &&
+      ranked[position + n].exact_hits === head.exact_hits
+    ) {
+      n += 1;
+    }
+
+    let prizeSum = 0;
+    for (const p of distribution.slice(position, position + n)) prizeSum += p;
+    const share = Math.floor(prizeSum / n);
+
+    for (let i = 0; i < n; i++) {
+      const w = ranked[position + i];
+      awards.push({
+        user_id: w.user_id,
+        points: share,
+        round_points: w.round_points,
+      });
+    }
+    position += n;
+  }
+
+  return awards;
+}
+
+/**
+ * Single-prize meta volante (the pre-distribution rule): only the round
+ * champion(s) earn `awardPoints`. Equivalent to `pickRoundAwards` with a
+ * one-position distribution — kept for back-compat and as the simplest case.
  */
 export function pickRoundWinners(
   entries: readonly RoundEntry[],
   awardPoints: number,
 ): RoundWinner[] {
-  if (entries.length === 0) return [];
+  return pickRoundAwards(entries, [awardPoints]);
+}
 
-  let maxPoints = -Infinity;
-  for (const e of entries) {
-    if (e.round_points > maxPoints) maxPoints = e.round_points;
+/**
+ * Human-readable summary of a meta-volante prize distribution, grouping
+ * consecutive positions with the same prize:
+ * `[100, 50, 50, 20, 20, 20, 20]` → `"1º +100 · 2º–3º +50 · 4º–7º +20"`.
+ * Pure formatting — no point values originate here.
+ */
+export function formatDistribution(distribution: readonly number[]): string {
+  const parts: string[] = [];
+  let start = 0;
+  while (start < distribution.length) {
+    let end = start;
+    while (
+      end + 1 < distribution.length &&
+      distribution[end + 1] === distribution[start]
+    ) {
+      end += 1;
+    }
+    const label =
+      start === end ? `${start + 1}º` : `${start + 1}º–${end + 1}º`;
+    parts.push(`${label} +${distribution[start]}`);
+    start = end + 1;
   }
-
-  // A round with no positive score has no champion.
-  if (maxPoints <= 0) return [];
-
-  const topByPoints = entries.filter((e) => e.round_points === maxPoints);
-
-  if (topByPoints.length === 1) {
-    const w = topByPoints[0];
-    return [
-      { user_id: w.user_id, points: awardPoints, round_points: w.round_points },
-    ];
-  }
-
-  // Tie on round_points → break by exact_hits.
-  let maxExact = -Infinity;
-  for (const e of topByPoints) {
-    if (e.exact_hits > maxExact) maxExact = e.exact_hits;
-  }
-  const winners = topByPoints.filter((e) => e.exact_hits === maxExact);
-
-  if (winners.length === 1) {
-    const w = winners[0];
-    return [
-      { user_id: w.user_id, points: awardPoints, round_points: w.round_points },
-    ];
-  }
-
-  // Full tie → split, integer floor, remainder dropped.
-  const share = Math.floor(awardPoints / winners.length);
-  return winners.map((w) => ({
-    user_id: w.user_id,
-    points: share,
-    round_points: w.round_points,
-  }));
+  return parts.join(" · ");
 }

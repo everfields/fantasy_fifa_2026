@@ -65,6 +65,8 @@ db/
                                insert / display_name|avatar change (no waiting for recalc)
     0010_cycling_classifications.sql matches.montana_stage (maillot de lunares tag) +
                                profile_emails() service-role-only email resolver (ADR-0014)
+    0011_meta_volante_distribution.sql seeds app_settings meta_volante_distribution
+                               ([100,50,50,20,20,20,20], only if absent) — ADR-0015
   seed/
     teams.csv            48 teams, groups A–L (PLACEHOLDER data — see warning below)
     matches.csv          72 group matches + 32 knockout placeholders (PLACEHOLDER)
@@ -77,7 +79,7 @@ db/
 Migrations are ordered and must be applied in sequence, then the seed:
 
 ```
-0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql  →  0009_standings_on_signup.sql  →  0010_cycling_classifications.sql
+0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql  →  0009_standings_on_signup.sql  →  0010_cycling_classifications.sql  →  0011_meta_volante_distribution.sql
 ```
 
 > **Note `0007` runs AFTER the seed.** It seeds Spain-scorer and tournament
@@ -365,6 +367,15 @@ touches no player data, fully idempotent.**
 - **RLS:** `matches` is already public-read to authenticated members;
   `montana_stage` is intentionally public (players must see which matches score
   for the mountain classification), so no new policy is added.
+
+### 0011_meta_volante_distribution.sql
+Meta volante prize distribution (ADR-0015). **Additive-only, touches no player
+data, fully idempotent.** Seeds `settings -> 'meta_volante_distribution'`
+(`[100, 50, 50, 20, 20, 20, 20]` = 1º/2º/3º/4º–7º) into the single
+`app_settings` row **only when the key is absent** — an admin-edited
+distribution is never overwritten. No schema change: `round_awards` already
+supports several awardees per round via `unique (round_key, user_id)`.
+`meta_volante_points` stays in the blob (deprecated, mirrors position 1).
 
 ## Seed data — PLACEHOLDER WARNING
 

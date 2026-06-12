@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const awards = await recomputeRoundAwards(
       supabase,
       settings.scoring,
-      settings.meta_volante_points,
+      settings.meta_volante_distribution,
       { dryRun: mode === "preview" },
     );
 
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         roundAwardsAffected: awards.awardsAffected,
         eligibleRounds: awards.eligibleRounds,
         scoring: settings.scoring,
-        metaVolantePoints: settings.meta_volante_points,
+        metaVolanteDistribution: settings.meta_volante_distribution,
       },
       actorId: admin.id,
     });

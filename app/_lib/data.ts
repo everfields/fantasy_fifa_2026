@@ -29,6 +29,11 @@ export async function getAppSettings(): Promise<AppSettings> {
       s.group_winner_points ?? DEFAULT_APP_SETTINGS.group_winner_points,
     meta_volante_points:
       s.meta_volante_points ?? DEFAULT_APP_SETTINGS.meta_volante_points,
+    meta_volante_distribution:
+      Array.isArray(s.meta_volante_distribution) &&
+      s.meta_volante_distribution.length > 0
+        ? s.meta_volante_distribution
+        : DEFAULT_APP_SETTINGS.meta_volante_distribution,
     jokers_per_user: s.jokers_per_user ?? DEFAULT_APP_SETTINGS.jokers_per_user,
     pot_amount: s.pot_amount ?? DEFAULT_APP_SETTINGS.pot_amount,
     entry_fee: s.entry_fee ?? DEFAULT_APP_SETTINGS.entry_fee,

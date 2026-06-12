@@ -12,6 +12,8 @@ import {
   recomputePredictionPoints,
   roundKeyForMatch,
   pickRoundWinners,
+  pickRoundAwards,
+  formatDistribution,
   type ScorableMatch,
   type RoundEntry,
 } from "./index";
@@ -463,4 +465,135 @@ test("pickRoundWinners: single entry with positive points wins", () => {
 
 test("pickRoundWinners: empty entries → []", () => {
   assert.deepEqual(pickRoundWinners([], 100), []);
+});
+
+// ---------------------------------------------------------------------------
+// pickRoundAwards — position-prize distribution (ADR-0015)
+// ---------------------------------------------------------------------------
+const DIST = [100, 50, 50, 20, 20, 20, 20];
+
+test("pickRoundAwards: full default distribution over 8 players (8º earns nothing)", () => {
+  const out = pickRoundAwards(
+    [
+      entry("p1", 80, 1),
+      entry("p2", 70, 1),
+      entry("p3", 60, 0),
+      entry("p4", 50, 0),
+      entry("p5", 40, 0),
+      entry("p6", 30, 0),
+      entry("p7", 20, 0),
+      entry("p8", 10, 0),
+    ],
+    DIST,
+  );
+  assert.deepEqual(out, [
+    { user_id: "p1", points: 100, round_points: 80 },
+    { user_id: "p2", points: 50, round_points: 70 },
+    { user_id: "p3", points: 50, round_points: 60 },
+    { user_id: "p4", points: 20, round_points: 50 },
+    { user_id: "p5", points: 20, round_points: 40 },
+    { user_id: "p6", points: 20, round_points: 30 },
+    { user_id: "p7", points: 20, round_points: 20 },
+  ]);
+});
+
+test("pickRoundAwards: input order does not matter (ranked by round_points)", () => {
+  const out = pickRoundAwards(
+    [entry("low", 10, 0), entry("high", 90, 0), entry("mid", 40, 0)],
+    DIST,
+  );
+  assert.deepEqual(
+    out.map((w) => w.user_id),
+    ["high", "mid", "low"],
+  );
+  assert.deepEqual(
+    out.map((w) => w.points),
+    [100, 50, 50],
+  );
+});
+
+test("pickRoundAwards: tie on points ordered by exact hits (2º vs 1º)", () => {
+  const out = pickRoundAwards(
+    [entry("a", 70, 0), entry("b", 70, 2)],
+    DIST,
+  );
+  // b outranks a on exact hits: b takes 1º (100), a takes 2º (50).
+  assert.deepEqual(out, [
+    { user_id: "b", points: 100, round_points: 70 },
+    { user_id: "a", points: 50, round_points: 70 },
+  ]);
+});
+
+test("pickRoundAwards: full tie splits the tied positions' prize sum", () => {
+  const out = pickRoundAwards(
+    [entry("a", 70, 1), entry("b", 70, 1), entry("c", 30, 0)],
+    DIST,
+  );
+  // a+b tie for 1º–2º → floor((100+50)/2) = 75 each; c drops to 3º (50).
+  assert.deepEqual(out, [
+    { user_id: "a", points: 75, round_points: 70 },
+    { user_id: "b", points: 75, round_points: 70 },
+    { user_id: "c", points: 50, round_points: 30 },
+  ]);
+});
+
+test("pickRoundAwards: tie group straddling the end of the distribution splits the remainder", () => {
+  // Positions 7º–8º tie but only 7º pays → floor(20/2) = 10 each.
+  const out = pickRoundAwards(
+    [
+      entry("p1", 80, 0),
+      entry("p2", 70, 0),
+      entry("p3", 60, 0),
+      entry("p4", 50, 0),
+      entry("p5", 40, 0),
+      entry("p6", 30, 0),
+      entry("t1", 20, 0),
+      entry("t2", 20, 0),
+    ],
+    DIST,
+  );
+  const tied = out.filter((w) => w.round_points === 20);
+  assert.deepEqual(tied, [
+    { user_id: "t1", points: 10, round_points: 20 },
+    { user_id: "t2", points: 10, round_points: 20 },
+  ]);
+});
+
+test("pickRoundAwards: zero-point players never occupy a paying position", () => {
+  const out = pickRoundAwards(
+    [entry("a", 30, 0), entry("z", 0, 0), entry("n", -5, 0)],
+    DIST,
+  );
+  assert.deepEqual(out, [{ user_id: "a", points: 100, round_points: 30 }]);
+});
+
+test("pickRoundAwards: fewer players than prizes → leftover prizes unawarded", () => {
+  const out = pickRoundAwards([entry("a", 30, 0), entry("b", 20, 0)], DIST);
+  assert.deepEqual(out, [
+    { user_id: "a", points: 100, round_points: 30 },
+    { user_id: "b", points: 50, round_points: 20 },
+  ]);
+});
+
+test("pickRoundAwards: single-prize distribution equals pickRoundWinners", () => {
+  const entries = [entry("a", 30, 2), entry("b", 30, 2), entry("c", 10, 0)];
+  assert.deepEqual(
+    pickRoundAwards(entries, [100]),
+    pickRoundWinners(entries, 100),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// formatDistribution
+// ---------------------------------------------------------------------------
+test("formatDistribution: groups consecutive equal prizes", () => {
+  assert.equal(
+    formatDistribution([100, 50, 50, 20, 20, 20, 20]),
+    "1º +100 · 2º–3º +50 · 4º–7º +20",
+  );
+});
+
+test("formatDistribution: single prize and empty distribution", () => {
+  assert.equal(formatDistribution([100]), "1º +100");
+  assert.equal(formatDistribution([]), "");
 });
