@@ -5,37 +5,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MaillotBadge } from "@/components/MaillotBadge";
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function RankBadge({ rank }: { rank: number }) {
-  const medal =
-    rank === 1
-      ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
-      : rank === 2
-        ? "bg-slate-400/20 text-slate-600 dark:text-slate-300"
-        : rank === 3
-          ? "bg-orange-500/20 text-orange-700 dark:text-orange-400"
-          : "text-muted-foreground";
-  return (
-    <span
-      className={cn(
-        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums",
-        medal
-      )}
-    >
-      {rank}
-    </span>
-  );
-}
+import { initials, RankBadge } from "@/components/classifications";
 
 /**
  * Leaderboard, mobile-first. A flat list (no <table>) so every breakpoint gets
@@ -81,7 +51,7 @@ export function RankingTable({
       {!hideHeader && (
         <div className="hidden items-center gap-3 border-b bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex">
           <span className="w-7 text-center">#</span>
-          <span className="flex-1">Jugador</span>
+          <span className="flex-1">Corredor</span>
           <span className="w-14 text-right">Exactos</span>
           <span className="w-14 text-right">Bonus</span>
           <span className="w-14 text-right">★ Meta</span>
@@ -100,7 +70,7 @@ export function RankingTable({
                 isCurrent && "bg-primary/5 ring-1 ring-inset ring-primary/30"
               )}
             >
-              <RankBadge rank={row.rank} />
+              <RankBadge rank={row.rank} accent="bg-amber-400/20 text-amber-600 dark:text-amber-400" />
               <Avatar className="h-8 w-8 shrink-0">
                 {row.avatar ? (
                   <AvatarImage src={row.avatar} alt={row.display_name} />

@@ -9,6 +9,7 @@ import type {
   StandingRow,
   RegularityRow,
   MontanaRow,
+  RoundAward,
 } from "@/lib/types";
 
 function standing(user_id: string, total: number, rank: number): StandingRow {
@@ -186,6 +187,55 @@ test("sortGeneral: rank ties order by created_at — amarillo first, rojo last",
   // The display order agrees with the jerseys: first row = amarillo, last = rojo.
   assert.ok(out[sorted[0].user_id].includes("amarillo"));
   assert.ok(out[sorted[sorted.length - 1].user_id].includes("rojo"));
+});
+
+// ---------------------------------------------------------------------------
+function award(
+  user_id: string,
+  round_key: RoundAward["round_key"],
+  round_points: number,
+  points = 100,
+): RoundAward {
+  return {
+    id: `${round_key}-${user_id}`,
+    round_key,
+    user_id,
+    points,
+    round_points,
+    created_at: "2026-06-12",
+  };
+}
+
+test("azul to every round winner, ties included; placed riders get none", () => {
+  const out = assignMaillots({
+    standings: [standing("a", 100, 1), standing("b", 80, 2), standing("c", 60, 3)],
+    regularity: [reg("a", 5, 1)],
+    montana: [mont("a", 10, 1)],
+    emailByUserId: {},
+    createdAt: { a: "2024-01-01", b: "2024-01-02", c: "2024-01-03" },
+    roundAwards: [
+      // md1: 'b' wins, 'a' second (still gets a prize, but no azul)
+      award("b", "group-md1", 120),
+      award("a", "group-md1", 90, 50),
+      // md2: full tie at the top → both 'a' and 'c' wear azul
+      award("a", "group-md2", 70, 75),
+      award("c", "group-md2", 70, 75),
+    ],
+  });
+  assert.ok(out["b"].includes("azul"));
+  assert.ok(out["a"].includes("azul"));
+  assert.ok(out["c"].includes("azul"));
+});
+
+test("no azul without round awards", () => {
+  const out = assignMaillots({
+    standings: [standing("a", 100, 1), standing("b", 80, 2)],
+    regularity: [reg("a", 5, 1)],
+    montana: [mont("a", 10, 1)],
+    emailByUserId: {},
+    createdAt: { a: "2024-01-01", b: "2024-01-02" },
+  });
+  assert.ok(Object.values(out).every((ks) => !ks.includes("azul")));
 });
 
 // ---------------------------------------------------------------------------

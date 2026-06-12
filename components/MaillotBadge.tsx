@@ -10,6 +10,7 @@ export const MAILLOT_LABELS: Record<MaillotKey, string> = {
   blanco: "Maillot blanco — mejor joven",
   arcoiris: "Maillot arcoíris — campeón de la pasada edición",
   rojo: "Farolillo rojo — cierra el pelotón",
+  azul: "Maillot azul — ganador de meta volante",
 };
 
 /**
@@ -112,6 +113,7 @@ function JerseyShape({ id, maillot }: { id: string; maillot: MaillotKey }) {
     blanco: "white",
     arcoiris: `url(#fill-${id})`,
     rojo: "#ef4444",     // red-500
+    azul: "#3b82f6",     // blue-500 — vivid in both themes
   };
   const fill = fillMap[maillot];
 

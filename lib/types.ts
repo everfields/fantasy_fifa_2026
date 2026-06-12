@@ -157,6 +157,7 @@ export interface StandingRow {
  *   lunares  — leader of the montaña classification (points on etapa matches)
  *   blanco   — best-placed young rider (fixed roster, matched by email)
  *   arcoiris — reigning champion of the previous edition (fixed, by email)
+ *   azul     — meta volante winner: won at least one round (several riders can wear it)
  *   rojo     — farolillo rojo: last place in the general (lanterne rouge)
  */
 export type MaillotKey =
@@ -165,6 +166,7 @@ export type MaillotKey =
   | "lunares"
   | "blanco"
   | "arcoiris"
+  | "azul"
   | "rojo";
 
 /**

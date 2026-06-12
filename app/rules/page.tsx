@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 
 import { requireUser } from "@/lib/auth/guards";
 import { formatDistribution } from "@/lib/scoring";
+import { formatEur } from "@/lib/pot";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { AppShell } from "../_components/shell";
-import { getAppSettings } from "../_lib/data";
+import { getAppSettings, getPotPrizes } from "../_lib/data";
 
 export const metadata = { title: "Reglas · Resiporra 26" };
 export const dynamic = "force-dynamic";
@@ -18,6 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function RulesPage() {
   const profile = await requireUser();
   const settings = await getAppSettings();
+  const pot = await getPotPrizes();
   const s = settings.scoring;
   // The goal-difference bonus is configurable; hide its card when disabled.
   const showDiff = s.diff_bonus_enabled;
@@ -157,6 +160,38 @@ export default async function RulesPage() {
             </Card>
           </div>
         </section>
+
+        {/* The pot. */}
+        {pot.winnerPrize > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-black tracking-tight">El bote</h2>
+            <Card>
+              <CardContent className="space-y-2 py-5">
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm">
+                    <Badge>1º</Badge>
+                    <span className="font-medium">Ganador</span>
+                  </span>
+                  <span className="font-mono text-sm font-bold tabular-nums">
+                    {formatEur(pot.winnerPrize)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm">
+                    <Badge variant="secondary">2º</Badge>
+                    <span className="font-medium">Segundo</span>
+                  </span>
+                  <span className="font-mono text-sm font-bold tabular-nums">
+                    {formatEur(pot.runnerUpPrize)}
+                  </span>
+                </div>
+                <p className="pt-1 text-xs text-muted-foreground">
+                  Aquí se juega por el orgullo; esto es solo el compromiso.
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
         {/* Golden rules. */}
         <section className="space-y-4">

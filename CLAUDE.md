@@ -68,8 +68,8 @@ recalc only (`pickRoundAwards` in `lib/scoring`). See `docs/decisions/0015`.
 
 **Pot (money):** `entry_fee` 20 €/player; 2º gets the stake back; 20 € `pot_expenses` (domain + infra)
 reimbursed to the organizer; 1º takes the rest. Math in `lib/pot.ts`; `pot_amount` is derived
-(`entry_fee × paid`), never hand-entered. Players see only the two prizes on `/standings`
-(see `docs/decisions/0010-pot-payout-model.md`).
+(`entry_fee × paid`), never hand-entered. Players see only the two prizes in the "El bote"
+section of `/rules` (moved from `/standings`, ADR-0016; see `docs/decisions/0010-pot-payout-model.md`).
 
 ## Clasificaciones ciclistas — see `docs/decisions/0014-cycling-classifications.md`
 `/standings` es una "vuelta ciclista": la general se muestra en **grupos de carrera dinámicos**
@@ -82,8 +82,13 @@ los cruces). **Regularidad** (verde): nº de eventos que puntúan (1 por pronós
 finished, bonus>0, meta volante), no la cuantía. **Maillots fijos por email** (constantes en
 `lib/classifications/config.ts`): arcoíris = JM; blanco = mejor de {Juan y Carlo, alberandu,
 Pablo M.H}; emails resueltos SOLO en servidor vía `profile_emails()` (service_role) — nunca
-exponer emails al cliente. Amarillo = líder general (empate → fecha de alta); rojo = farolillo.
-Las clasificaciones derivadas se computan en render desde datos puntuados — sin recalc nuevo.
+exponer emails al cliente. Amarillo = líder general (empate → fecha de alta); rojo = farolillo;
+**azul** = ganador de (al menos) una ronda de meta volante — varios corredores pueden vestirlo
+(`assignMaillots` con `roundAwards`, ADR-0016). Las clasificaciones derivadas se computan en
+render desde datos puntuados — sin recalc nuevo. **UI de clasificaciones (ADR-0016):**
+terminología «corredor» (nunca «jugador» fuera del admin); `RankBadge`/`initials` compartidos en
+`components/classifications.tsx` y chrome unificado entre tableros; en móvil `/standings` no
+muestra h1 ni botón Bote — los premios del bote viven en `/rules`.
 
 ## Luis de la Tracker (AI tracker) — see `docs/decisions/0003-luis-de-la-tracker.md`
 Daily AI "parte" parodying Spain coach Luis de la Fuente (seco, chulesco, sobrado). Pipeline:

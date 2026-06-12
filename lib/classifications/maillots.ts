@@ -15,6 +15,8 @@
 //    MAILLOT_BLANCO_EMAILS — always awarded if any roster member is present,
 //    even at 0 points; tie-break created_at.
 //  - arcoiris → the user whose email === MAILLOT_ARCOIRIS_EMAIL (fixed).
+//  - azul     → every rider who has WON at least one meta volante round
+//    (top round_points among the round's awards; ties → all winners wear it).
 //  - rojo     → farolillo rojo: last of the general, ONLY if standings.length
 //    >= 2 AND the leader's total > 0; tail tie → LARGEST created_at.
 // ============================================================================
@@ -23,6 +25,7 @@ import type {
   StandingRow,
   RegularityRow,
   MontanaRow,
+  RoundAward,
   MaillotKey,
 } from "@/lib/types";
 import { MAILLOT_ARCOIRIS_EMAIL, MAILLOT_BLANCO_EMAILS } from "./config";
@@ -53,8 +56,16 @@ export function assignMaillots(input: {
   montana: MontanaRow[];
   emailByUserId: Record<string, string>;
   createdAt: Record<string, string>;
+  roundAwards?: RoundAward[];
 }): Record<string, MaillotKey[]> {
-  const { standings, regularity, montana, emailByUserId, createdAt } = input;
+  const {
+    standings,
+    regularity,
+    montana,
+    emailByUserId,
+    createdAt,
+    roundAwards = [],
+  } = input;
 
   const result: Record<string, MaillotKey[]> = {};
   const add = (userId: string, key: MaillotKey) => {
@@ -101,6 +112,19 @@ export function assignMaillots(input: {
       add(s.user_id, "arcoiris");
       break;
     }
+  }
+
+  // azul — every winner of a meta volante round (best round_points among the
+  // round's awards; full ties → every tied winner wears it).
+  const bestByRound = new Map<string, number>();
+  for (const a of roundAwards) {
+    const best = bestByRound.get(a.round_key);
+    if (best === undefined || a.round_points > best) {
+      bestByRound.set(a.round_key, a.round_points);
+    }
+  }
+  for (const a of roundAwards) {
+    if (a.round_points === bestByRound.get(a.round_key)) add(a.user_id, "azul");
   }
 
   // rojo — last of the general, only if >=2 riders and leader has points.

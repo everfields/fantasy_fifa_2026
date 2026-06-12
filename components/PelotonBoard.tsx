@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MaillotBadge } from "@/components/MaillotBadge";
+import { initials, RankBadge as SharedRankBadge } from "@/components/classifications";
 
 /* ─── group metadata ──────────────────────────────────────────────────────── */
 
@@ -50,35 +51,8 @@ const GROUP_META: Record<PelotonGroupKey, GroupMeta> = {
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 function RankBadge({ rank }: { rank: number }) {
-  const medal =
-    rank === 1
-      ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
-      : rank === 2
-        ? "bg-slate-400/20 text-slate-600 dark:text-slate-300"
-        : rank === 3
-          ? "bg-orange-500/20 text-orange-700 dark:text-orange-400"
-          : "text-muted-foreground";
-  return (
-    <span
-      className={cn(
-        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums",
-        medal
-      )}
-    >
-      {rank}
-    </span>
-  );
+  return <SharedRankBadge rank={rank} accent="bg-amber-400/20 text-amber-600 dark:text-amber-400" />;
 }
 
 /* ─── group banner ───────────────────────────────────────────────────────── */

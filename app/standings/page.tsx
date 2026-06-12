@@ -22,8 +22,6 @@ import {
 import { RegularityBoard } from "@/components/RegularityBoard";
 import { MaillotBadge, MAILLOT_LABELS } from "@/components/MaillotBadge";
 
-import { PotDialog } from "@/components/PotDialog";
-
 import {
   groupPeloton,
   computeRegularity,
@@ -34,7 +32,7 @@ import {
 import { MAILLOT_BLANCO_EMAILS } from "@/lib/classifications/config";
 
 import { AppShell } from "../_components/shell";
-import { getAppSettings, getPotPrizes, matchdayKey } from "../_lib/data";
+import { getAppSettings, matchdayKey } from "../_lib/data";
 
 export const metadata = { title: "Clasificación · Resiporra 26" };
 export const dynamic = "force-dynamic";
@@ -211,7 +209,6 @@ export default async function StandingsPage() {
     { data: profileData },
     { data: teamData },
     emailByUserId,
-    pot,
     settings,
   ] = await Promise.all([
     supabase
@@ -225,7 +222,6 @@ export default async function StandingsPage() {
     supabase.from("profiles").select("id, created_at"),
     supabase.from("teams").select("id, name, code"),
     loadEmailMap(),
-    getPotPrizes(),
     getAppSettings(),
   ]);
 
@@ -272,6 +268,7 @@ export default async function StandingsPage() {
     standings,
     regularity,
     montana: montana.rows,
+    roundAwards: awards,
     emailByUserId,
     createdAt,
   });
@@ -321,17 +318,9 @@ export default async function StandingsPage() {
   return (
     <AppShell profile={profile}>
       <div className="space-y-4 sm:space-y-6">
-        <header className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-black tracking-tight sm:text-4xl">
-            Clasificación
-          </h1>
-          {pot.winnerPrize > 0 ? (
-            <PotDialog
-              winnerPrize={pot.winnerPrize}
-              runnerUpPrize={pot.runnerUpPrize}
-            />
-          ) : null}
-        </header>
+        <h1 className="hidden text-2xl font-black tracking-tight sm:block sm:text-4xl">
+          Clasificación
+        </h1>
 
         <Tabs defaultValue="general">
           {/* 6 tabs — two rows of 3 on phones, inline on sm+. */}

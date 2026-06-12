@@ -4,6 +4,8 @@ import type { RoundAward, StandingRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { MaillotBadge } from "@/components/MaillotBadge";
+import { initials, RankBadge } from "@/components/classifications";
 
 // Display order + Spanish labels for every meta-volante round
 // (see roundKeyForMatch in lib/scoring — third_place folds into "final").
@@ -61,16 +63,6 @@ function formatDistribution(distribution: number[]): string {
     i = j + 1;
   }
   return parts.join(" · ");
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 /**
@@ -150,7 +142,7 @@ export function MetaVolanteBoard({
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Live (provisional) standing of the round in progress */}
+      {/* ── Live (provisional) standing of the round in progress ─────────── */}
       {live && live.entries.length > 0 ? (
         <section className="space-y-2">
           <div className="flex items-baseline justify-between gap-2 px-1">
@@ -172,33 +164,33 @@ export function MetaVolanteBoard({
                 <li
                   key={e.user_id}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 sm:px-4",
+                    "flex items-center gap-3 px-3 py-2.5 sm:px-4",
                     isCurrent && "bg-primary/5 ring-1 ring-inset ring-primary/30"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
-                      leader
-                        ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {i + 1}
-                  </span>
-                  <Avatar className="h-7 w-7 shrink-0">
+                  <RankBadge
+                    rank={i + 1}
+                    accent="bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                  />
+                  <Avatar className="h-8 w-8 shrink-0">
                     {p?.avatar ? (
                       <AvatarImage src={p.avatar} alt={p.display_name} />
                     ) : null}
-                    <AvatarFallback className="text-[10px]">
+                    <AvatarFallback className="text-xs">
                       {initials(p?.display_name ?? "?")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex min-w-0 flex-1 items-center gap-1.5">
                     <span className="truncate text-sm font-semibold">
-                      {p?.display_name ?? "Jugador"}
+                      {p?.display_name ?? "Corredor"}
                     </span>
-                    {leader ? <span aria-hidden>★</span> : null}
+                    {leader ? (
+                      <MaillotBadge
+                        maillot="azul"
+                        size="sm"
+                        className="opacity-60"
+                      />
+                    ) : null}
                     {isCurrent && (
                       <Badge
                         variant="success"
@@ -211,7 +203,7 @@ export function MetaVolanteBoard({
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                     {e.exact_hits} plenos
                   </span>
-                  <span className="w-10 shrink-0 text-right text-sm font-black tabular-nums">
+                  <span className="w-10 shrink-0 text-right text-base font-black tabular-nums">
                     {e.round_points}
                   </span>
                 </li>
@@ -225,121 +217,136 @@ export function MetaVolanteBoard({
         </section>
       ) : null}
 
-      {/* Accumulated meta-volante ranking */}
+      {/* ── Accumulated meta-volante ranking ─────────────────────────────── */}
       {awards.length > 0 ? (
-      <ol className="divide-y divide-border overflow-hidden rounded-xl border bg-card">
-        {ranking.map((entry, i) => {
-          const p = players.get(entry.userId);
-          const isCurrent = currentUserId === entry.userId;
-          return (
-            <li
-              key={entry.userId}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 sm:px-4",
-                isCurrent && "bg-primary/5 ring-1 ring-inset ring-primary/30"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums",
-                  i === 0
-                    ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
-                    : "text-muted-foreground"
-                )}
-              >
-                {i + 1}
+        <div className="flex flex-col gap-0">
+          <div className="overflow-hidden rounded-t-xl border-x border-t bg-card">
+            {/* Blue-accented header */}
+            <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
+              <MaillotBadge maillot="azul" size="md" />
+              <span className="text-[13px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                Metas volantes
               </span>
-              <Avatar className="h-8 w-8 shrink-0">
-                {p?.avatar ? (
-                  <AvatarImage src={p.avatar} alt={p.display_name} />
-                ) : null}
-                <AvatarFallback className="text-xs">
-                  {initials(p?.display_name ?? "?")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-semibold">
-                    {p?.display_name ?? "Jugador"}
-                  </span>
-                  {isCurrent && (
-                    <Badge
-                      variant="success"
-                      className="shrink-0 px-1.5 py-0 text-[10px]"
-                    >
-                      Tú
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-0.5 flex flex-wrap gap-1">
-                  {entry.rounds.map((r) => (
-                    <span
-                      key={r}
-                      className="rounded-full border border-amber-400/40 bg-amber-400/10 px-1.5 py-px text-[10px] font-semibold text-amber-700 dark:text-amber-300"
-                    >
-                      {ROUND_SHORT[r] ?? r}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <span className="shrink-0 text-right text-base font-black tabular-nums text-amber-600 dark:text-amber-400">
-                {entry.points}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-      ) : null}
+            </div>
 
-      {/* Round-by-round winners */}
-      {awards.length > 0 ? (
-      <section className="space-y-2">
-        <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Ronda a ronda
-        </h2>
-        <ol className="divide-y divide-border overflow-hidden rounded-xl border bg-card">
-          {roundsAwarded.map((key) => {
-            const winners = awardsByRound.get(key) ?? [];
-            return (
-              <li
-                key={key}
-                className="flex items-center gap-3 px-3 py-2.5 sm:px-4"
-              >
-                <span className="w-32 shrink-0 text-xs font-semibold text-muted-foreground sm:w-40 sm:text-sm">
-                  {ROUND_LABELS[key] ?? key}
-                </span>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  {winners.map((w, i) => (
-                    <p
-                      key={w.id}
-                      className="flex items-baseline gap-2 text-sm font-semibold"
-                    >
-                      <span className="min-w-0 flex-1 truncate">
-                        {i === 0 ? <span aria-hidden>★ </span> : null}
-                        {players.get(w.user_id)?.display_name ?? "Jugador"}
-                        <span className="text-xs font-normal tabular-nums text-muted-foreground">
-                          {" "}
-                          · {w.round_points} pts en la ronda
+            <ol className="divide-y divide-border">
+              {ranking.map((entry, i) => {
+                const p = players.get(entry.userId);
+                const isCurrent = currentUserId === entry.userId;
+                return (
+                  <li
+                    key={entry.userId}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 sm:px-4",
+                      isCurrent && "bg-primary/5 ring-1 ring-inset ring-primary/30"
+                    )}
+                  >
+                    <RankBadge
+                      rank={i + 1}
+                      accent="bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                    />
+                    <Avatar className="h-8 w-8 shrink-0">
+                      {p?.avatar ? (
+                        <AvatarImage src={p.avatar} alt={p.display_name} />
+                      ) : null}
+                      <AvatarFallback className="text-xs">
+                        {initials(p?.display_name ?? "?")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-semibold">
+                          {p?.display_name ?? "Corredor"}
                         </span>
-                      </span>
-                      <span className="shrink-0 text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                        +{w.points}
-                      </span>
-                    </p>
-                  ))}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+                        {isCurrent && (
+                          <Badge
+                            variant="success"
+                            className="shrink-0 px-1.5 py-0 text-[10px]"
+                          >
+                            Tú
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {entry.rounds.map((r) => (
+                          <span
+                            key={r}
+                            className="rounded-full border border-blue-500/40 bg-blue-500/10 px-1.5 py-px text-[10px] font-semibold text-blue-700 dark:text-blue-300"
+                          >
+                            {ROUND_SHORT[r] ?? r}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-right text-base font-black tabular-nums text-blue-600 dark:text-blue-400">
+                      {entry.points}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          {/* Footer explainer — visually attached below the ranking */}
+          <div className="rounded-b-xl border-x border-b border-blue-500/20 bg-blue-500/5 px-4 py-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              <span className="font-semibold text-blue-700 dark:text-blue-400">
+                La meta volante
+              </span>{" "}
+              reparte premios por posición en cada ronda según los puntos de
+              pronósticos ({prizeLadder} pts). Empates: más plenos en la ronda;
+              si persiste, los empatados se reparten la suma de sus premios.
+            </p>
+          </div>
+        </div>
       ) : null}
 
-      <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-        La meta volante reparte premios por posición en cada ronda según los
-        puntos de pronósticos ({prizeLadder} pts). Empates: más plenos en la
-        ronda; si persiste, los empatados se reparten la suma de sus premios.
-      </p>
+      {/* ── Round-by-round winners ────────────────────────────────────────── */}
+      {awards.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Ronda a ronda
+          </h2>
+          <ol className="divide-y divide-border overflow-hidden rounded-xl border bg-card">
+            {roundsAwarded.map((key) => {
+              const winners = awardsByRound.get(key) ?? [];
+              return (
+                <li
+                  key={key}
+                  className="flex items-center gap-3 px-3 py-2.5 sm:px-4"
+                >
+                  <span className="w-32 shrink-0 text-xs font-semibold text-muted-foreground sm:w-40 sm:text-sm">
+                    {ROUND_LABELS[key] ?? key}
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    {winners.map((w, i) => (
+                      <p
+                        key={w.id}
+                        className="flex items-center gap-2 text-sm font-semibold"
+                      >
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate">
+                          {i === 0 ? (
+                            <MaillotBadge maillot="azul" size="sm" />
+                          ) : null}
+                          <span className="truncate">
+                            {players.get(w.user_id)?.display_name ?? "Corredor"}
+                          </span>
+                          <span className="text-xs font-normal tabular-nums text-muted-foreground">
+                            · {w.round_points} pts en la ronda
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                          +{w.points}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      ) : null}
     </div>
   );
 }
