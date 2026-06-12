@@ -323,15 +323,29 @@ export default async function StandingsPage() {
         </h1>
 
         <Tabs defaultValue="general">
-          {/* 6 tabs — two rows of 3 on phones, inline on sm+. */}
-          <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="montana">Montaña</TabsTrigger>
-            <TabsTrigger value="regularidad">Regularidad</TabsTrigger>
-            <TabsTrigger value="jovenes">Jóvenes</TabsTrigger>
-            <TabsTrigger value="meta">Meta volante</TabsTrigger>
-            <TabsTrigger value="evolucion">Evolución</TabsTrigger>
-          </TabsList>
+          {/* 6 tabs — single swipeable row on phones (scrollbar hidden), inline on sm+. */}
+          <div className="-mx-8 overflow-x-auto px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:overflow-visible sm:px-0">
+            <TabsList className="w-max justify-start">
+              <TabsTrigger value="general" className="shrink-0">
+                General
+              </TabsTrigger>
+              <TabsTrigger value="montana" className="shrink-0">
+                Montaña
+              </TabsTrigger>
+              <TabsTrigger value="regularidad" className="shrink-0">
+                Regularidad
+              </TabsTrigger>
+              <TabsTrigger value="jovenes" className="shrink-0">
+                Jóvenes
+              </TabsTrigger>
+              <TabsTrigger value="meta" className="shrink-0">
+                Meta volante
+              </TabsTrigger>
+              <TabsTrigger value="evolucion" className="shrink-0">
+                Evolución
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="general" className="mt-4 space-y-3">
             <PelotonBoard
