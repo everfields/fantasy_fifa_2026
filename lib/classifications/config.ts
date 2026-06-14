@@ -17,3 +17,19 @@ export const MAILLOT_BLANCO_EMAILS = [
   "carlosandujarvaca@gmail.com",
   "pmarher13@gmail.com",
 ];
+
+/** Extremadura (maillot extremeño): AlexP y su representante, Raúl Lucía, Nacho C, JM, nandonandez. */
+export const MAILLOT_EXTREMADURA_EMAILS = [
+  "angelccmail@gmail.com",
+  "raullucia79@gmail.com",
+  "jicarrascodiaz@gmail.com",
+  "aronofski@hotmail.com",
+  "nandonandez@gmail.com",
+];
+
+/** Familia Monar (maillot Monar): Pablo M.H, El Monar verdadero, Fer MM. */
+export const MAILLOT_MONARS_EMAILS = [
+  "pmarher13@gmail.com",
+  "albertommonar@gmail.com",
+  "fermonar@gmail.com",
+];

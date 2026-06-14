@@ -11,6 +11,8 @@
 export {
   MAILLOT_ARCOIRIS_EMAIL,
   MAILLOT_BLANCO_EMAILS,
+  MAILLOT_EXTREMADURA_EMAILS,
+  MAILLOT_MONARS_EMAILS,
 } from "./config";
 
 export { groupPeloton } from "./peloton";

@@ -14,6 +14,9 @@
 //  - blanco   → best-placed rider in the general whose email ∈
 //    MAILLOT_BLANCO_EMAILS — always awarded if any roster member is present,
 //    even at 0 points; tie-break created_at.
+//  - extremadura / monars → same fixed-roster rule as blanco, keyed by
+//    MAILLOT_EXTREMADURA_EMAILS / MAILLOT_MONARS_EMAILS. A rider can wear
+//    several of these at once.
 //  - arcoiris → the user whose email === MAILLOT_ARCOIRIS_EMAIL (fixed).
 //  - azul     → every rider who has WON at least one meta volante round
 //    (top round_points among the round's awards; ties → all winners wear it).
@@ -28,7 +31,12 @@ import type {
   RoundAward,
   MaillotKey,
 } from "@/lib/types";
-import { MAILLOT_ARCOIRIS_EMAIL, MAILLOT_BLANCO_EMAILS } from "./config";
+import {
+  MAILLOT_ARCOIRIS_EMAIL,
+  MAILLOT_BLANCO_EMAILS,
+  MAILLOT_EXTREMADURA_EMAILS,
+  MAILLOT_MONARS_EMAILS,
+} from "./config";
 
 /**
  * Canonical display order of the general: rank asc, total desc, then
@@ -104,15 +112,19 @@ export function assignMaillots(input: {
     add(montana[0].user_id, "lunares");
   }
 
-  // blanco — best-placed roster member (always if present).
-  const rosterSet = new Set(MAILLOT_BLANCO_EMAILS.map((e) => e.toLowerCase()));
-  const blancoCandidates = general.filter((s) => {
-    const email = (emailByUserId[s.user_id] ?? "").toLowerCase();
-    return rosterSet.has(email);
-  });
-  if (blancoCandidates.length > 0) {
-    add(blancoCandidates[0].user_id, "blanco");
-  }
+  // Fixed-roster jerseys — best-placed roster member in the general (always if
+  // any roster member is present, even at 0 points). blanco = jóvenes,
+  // extremadura = corredores extremeños, monars = familia Monar.
+  const awardBestRosterMember = (emails: string[], key: MaillotKey) => {
+    const roster = new Set(emails.map((e) => e.toLowerCase()));
+    const best = general.find((s) =>
+      roster.has((emailByUserId[s.user_id] ?? "").toLowerCase()),
+    );
+    if (best) add(best.user_id, key);
+  };
+  awardBestRosterMember(MAILLOT_BLANCO_EMAILS, "blanco");
+  awardBestRosterMember(MAILLOT_EXTREMADURA_EMAILS, "extremadura");
+  awardBestRosterMember(MAILLOT_MONARS_EMAILS, "monars");
 
   // arcoiris — fixed by email, always.
   for (const s of standings) {

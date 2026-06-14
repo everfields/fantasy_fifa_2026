@@ -4,7 +4,12 @@ import { test } from "vitest";
 import assert from "node:assert";
 
 import { assignAstons, assignMaillots, sortGeneral } from "./maillots";
-import { MAILLOT_ARCOIRIS_EMAIL, MAILLOT_BLANCO_EMAILS } from "./config";
+import {
+  MAILLOT_ARCOIRIS_EMAIL,
+  MAILLOT_BLANCO_EMAILS,
+  MAILLOT_EXTREMADURA_EMAILS,
+  MAILLOT_MONARS_EMAILS,
+} from "./config";
 import type {
   StandingRow,
   RegularityRow,
@@ -126,6 +131,44 @@ test("blanco picks the best-placed among several roster members", () => {
   });
   assert.ok(out["y2"].includes("blanco"));
   assert.ok(!out["y1"] || !out["y1"].includes("blanco"));
+});
+
+test("extremadura + monars to best-placed roster member; independent of blanco", () => {
+  const out = assignMaillots({
+    standings: [
+      standing("ext", 90, 1),
+      standing("a", 80, 2),
+      standing("mon", 70, 3),
+    ],
+    regularity: [reg("ext", 5, 1)],
+    montana: [mont("ext", 10, 1)],
+    emailByUserId: {
+      ext: MAILLOT_EXTREMADURA_EMAILS[0],
+      a: "a@x.com",
+      mon: MAILLOT_MONARS_EMAILS[0],
+    },
+    createdAt: { ext: "2024-01-01", a: "2024-01-02", mon: "2024-01-03" },
+  });
+  assert.ok(out["ext"].includes("extremadura"));
+  assert.ok(out["mon"].includes("monars"));
+  // The Extremadura roster includes JM, who can also wear other jerseys; the
+  // pick is purely the best-placed roster member in the general.
+  assert.ok(!out["a"] || !out["a"].includes("extremadura"));
+});
+
+test("extremadura/monars: none when no roster member is present", () => {
+  const out = assignMaillots({
+    standings: [standing("a", 100, 1), standing("b", 80, 2)],
+    regularity: [reg("a", 5, 1)],
+    montana: [mont("a", 10, 1)],
+    emailByUserId: { a: "a@x.com", b: "b@x.com" },
+    createdAt: { a: "2024-01-01", b: "2024-01-02" },
+  });
+  assert.ok(
+    Object.values(out).every(
+      (ks) => !ks.includes("extremadura") && !ks.includes("monars"),
+    ),
+  );
 });
 
 // ---------------------------------------------------------------------------

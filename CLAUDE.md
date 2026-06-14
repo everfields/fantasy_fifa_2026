@@ -81,8 +81,11 @@ auto-pick incremental `pickMontanaStages` + editor en `/admin/matches`; re-ejecu
 los cruces). **Regularidad** (verde): nº de eventos que puntúan (1 por pronóstico>0 en partido
 finished, bonus>0, meta volante), no la cuantía. **Maillots fijos por email** (constantes en
 `lib/classifications/config.ts`): arcoíris = JM; blanco = mejor de {Juan y Carlo, alberandu,
-Pablo M.H}; emails resueltos SOLO en servidor vía `profile_emails()` (service_role) — nunca
-exponer emails al cliente. Amarillo = líder general (empate → fecha de alta); rojo = farolillo;
+Pablo M.H}; **extremadura** (bandera extremeña) = mejor de {AlexP, Raúl Lucía, Nacho C, JM,
+nandonandez}; **monars** (bandera de Canarias con «M») = mejor de {Pablo M.H, El Monar verdadero,
+Fer MM} — los tres con la mecánica del blanco (mejor de la general del roster, pestaña propia tras
+«Jóvenes»; ADR-0017). Emails resueltos SOLO en servidor vía `profile_emails()` (service_role) —
+nunca exponer emails al cliente. Amarillo = líder general (empate → fecha de alta); rojo = farolillo;
 **azul** = ganador de (al menos) una ronda de meta volante — varios corredores pueden vestirlo
 (`assignMaillots` con `roundAwards`, ADR-0016). **Coche Aston Martin** (safety car) = antepenúltimo
 y penúltimo de la general (`assignAstons`; ≥4 corredores y líder con puntos); el último lleva SOLO

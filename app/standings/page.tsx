@@ -35,7 +35,11 @@ import {
   assignMaillots,
   sortGeneral,
 } from "@/lib/classifications";
-import { MAILLOT_BLANCO_EMAILS } from "@/lib/classifications/config";
+import {
+  MAILLOT_BLANCO_EMAILS,
+  MAILLOT_EXTREMADURA_EMAILS,
+  MAILLOT_MONARS_EMAILS,
+} from "@/lib/classifications/config";
 
 import { AppShell } from "../_components/shell";
 import { getAppSettings, matchdayKey } from "../_lib/data";
@@ -309,18 +313,23 @@ export default async function StandingsPage() {
     new Set(Object.values(maillots).flat()),
   ) as MaillotKey[];
 
-  // --- Jóvenes (maillot blanco) tab ---------------------------------------
-  // Filter to the fixed young-rider roster (matched by email, server-side),
+  // --- Fixed-roster tabs (Jóvenes, Extremadura, Monars) -------------------
+  // Filter the general to a fixed roster (matched by email, server-side) and
   // re-rank 1..n preserving the general order. Hidden if the email map is empty
   // (RPC unavailable) — never leak the roster or break the page.
-  const blancoSet = new Set(MAILLOT_BLANCO_EMAILS);
-  const youngRows: StandingRow[] = standings
-    .filter((r) => {
-      const email = emailByUserId[r.user_id];
-      return email ? blancoSet.has(email) : false;
-    })
-    .map((r, i) => ({ ...r, rank: i + 1 }));
-  const showYoung = Object.keys(emailByUserId).length > 0;
+  const rosterRows = (emails: string[]): StandingRow[] => {
+    const set = new Set(emails.map((e) => e.toLowerCase()));
+    return standings
+      .filter((r) => {
+        const email = emailByUserId[r.user_id];
+        return email ? set.has(email) : false;
+      })
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  };
+  const youngRows = rosterRows(MAILLOT_BLANCO_EMAILS);
+  const extremaduraRows = rosterRows(MAILLOT_EXTREMADURA_EMAILS);
+  const monarsRows = rosterRows(MAILLOT_MONARS_EMAILS);
+  const showRosters = Object.keys(emailByUserId).length > 0;
 
   return (
     <AppShell profile={profile}>
@@ -330,7 +339,7 @@ export default async function StandingsPage() {
         </h1>
 
         <Tabs defaultValue="general">
-          {/* 6 tabs — single swipeable row on phones (scrollbar hidden), inline on sm+. */}
+          {/* Swipeable single row on phones (scrollbar hidden), inline on sm+. */}
           <div className="-mx-8 overflow-x-auto px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:overflow-visible sm:px-0">
             <TabsList className="w-max justify-start">
               <TabsTrigger value="general" className="shrink-0">
@@ -344,6 +353,12 @@ export default async function StandingsPage() {
               </TabsTrigger>
               <TabsTrigger value="jovenes" className="shrink-0">
                 Jóvenes
+              </TabsTrigger>
+              <TabsTrigger value="extremadura" className="shrink-0">
+                Extremadura
+              </TabsTrigger>
+              <TabsTrigger value="monars" className="shrink-0">
+                Monars
               </TabsTrigger>
               <TabsTrigger value="meta" className="shrink-0">
                 Meta volante
@@ -397,7 +412,7 @@ export default async function StandingsPage() {
           </TabsContent>
 
           <TabsContent value="jovenes" className="mt-4">
-            {showYoung ? (
+            {showRosters ? (
               <RankingTable
                 rows={youngRows}
                 currentUserId={profile.id}
@@ -407,6 +422,50 @@ export default async function StandingsPage() {
                     maillot="blanco"
                     title="Mejor joven"
                     right="Los tres jóvenes talentos de la porra"
+                  />
+                }
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+                Clasificación por estrenar.
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="extremadura" className="mt-4">
+            {showRosters ? (
+              <RankingTable
+                rows={extremaduraRows}
+                currentUserId={profile.id}
+                maillots={maillots}
+                header={
+                  <BoardHeader
+                    maillot="extremadura"
+                    title="Extremadura"
+                    accentClass="text-green-700 dark:text-green-400"
+                    right="Mejor corredor extremeño"
+                  />
+                }
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+                Clasificación por estrenar.
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="monars" className="mt-4">
+            {showRosters ? (
+              <RankingTable
+                rows={monarsRows}
+                currentUserId={profile.id}
+                maillots={maillots}
+                header={
+                  <BoardHeader
+                    maillot="monars"
+                    title="Monars"
+                    accentClass="text-blue-700 dark:text-blue-400"
+                    right="Mejor corredor de la familia Monar"
                   />
                 }
               />

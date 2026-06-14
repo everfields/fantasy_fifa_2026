@@ -10,6 +10,8 @@ export const MAILLOT_LABELS: Record<MaillotKey, string> = {
   blanco: "Maillot blanco — mejor joven",
   arcoiris: "Maillot arcoíris — campeón de la pasada edición",
   rojo: "Farolillo rojo — cierra el pelotón",
+  extremadura: "Maillot extremeño — mejor corredor de Extremadura",
+  monars: "Maillot Monar — mejor corredor de la familia Monar",
   azul: "Maillot azul — ganador de meta volante",
 };
 
@@ -49,6 +51,23 @@ export function MaillotBadge({
       </defs>
       {/* Jersey body path: collar, shoulders, sleeves, torso */}
       <JerseyShape id={id} maillot={maillot} />
+      {/* Monars: the "M" of the Monar family over the Canarias stripes. */}
+      {maillot === "monars" && (
+        <text
+          x="12"
+          y="16.5"
+          textAnchor="middle"
+          fontSize="9"
+          fontWeight="900"
+          fontFamily="system-ui, sans-serif"
+          fill="white"
+          stroke="#0a3d62"
+          strokeWidth="0.35"
+          paintOrder="stroke"
+        >
+          M
+        </text>
+      )}
     </svg>
   );
 }
@@ -68,6 +87,33 @@ function JerseyDefs({ id, maillot }: { id: string; maillot: MaillotKey }) {
         <rect width="4" height="4" fill="white" />
         <circle cx="2" cy="2" r="0.9" fill="#dc2626" />
       </pattern>
+    );
+  }
+  if (maillot === "extremadura") {
+    // Flag of Extremadura: three horizontal bands — green / white / black.
+    return (
+      <linearGradient id={`fill-${id}`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#009639" />
+        <stop offset="38%" stopColor="#009639" />
+        <stop offset="38%" stopColor="white" />
+        <stop offset="68%" stopColor="white" />
+        <stop offset="68%" stopColor="#111827" />
+        <stop offset="100%" stopColor="#111827" />
+      </linearGradient>
+    );
+  }
+  if (maillot === "monars") {
+    // Flag of the Canary Islands: three vertical bands — white / blue / yellow
+    // (horizontal gradient → vertical stripes). The "M" is overlaid in <text>.
+    return (
+      <linearGradient id={`fill-${id}`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="white" />
+        <stop offset="33%" stopColor="white" />
+        <stop offset="33%" stopColor="#0072c6" />
+        <stop offset="66%" stopColor="#0072c6" />
+        <stop offset="66%" stopColor="#ffd100" />
+        <stop offset="100%" stopColor="#ffd100" />
+      </linearGradient>
     );
   }
   if (maillot === "arcoiris") {
@@ -112,6 +158,8 @@ function JerseyShape({ id, maillot }: { id: string; maillot: MaillotKey }) {
     lunares: `url(#fill-${id})`,
     blanco: "white",
     arcoiris: `url(#fill-${id})`,
+    extremadura: `url(#fill-${id})`,
+    monars: `url(#fill-${id})`,
     rojo: "#ef4444",     // red-500
     azul: "#3b82f6",     // blue-500 — vivid in both themes
   };
