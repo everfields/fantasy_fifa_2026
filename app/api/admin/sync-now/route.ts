@@ -26,8 +26,8 @@ import {
   loadMatchRows,
   loadTeamCodeById,
   logAudit,
-  refreshStandings,
   rescoreMatches,
+  settleRoundAwardsAndRefresh,
 } from "../../_lib";
 
 export const runtime = "nodejs";
@@ -119,6 +119,7 @@ export async function POST(req: Request) {
     );
 
     let rescored = 0;
+    let roundAwardsAffected = 0;
     if (finishedChanged.length > 0) {
       const result = await rescoreMatches(
         supabase,
@@ -126,7 +127,13 @@ export async function POST(req: Request) {
         settings.scoring,
       );
       rescored = result.rescored;
-      if (result.rescored > 0) await refreshStandings(supabase);
+      // Settle meta-volante round awards automatically if this completed a round.
+      const awards = await settleRoundAwardsAndRefresh(
+        supabase,
+        settings,
+        result.rescored,
+      );
+      roundAwardsAffected = awards.awardsAffected;
     }
 
     await logAudit(supabase, {
@@ -140,6 +147,7 @@ export async function POST(req: Request) {
         matchesFinished: applied.finishedMatchIds.length,
         unmatched: applied.unmatched,
         predictionsRescored: rescored,
+        roundAwardsAffected,
       },
       actorId: admin.id,
     });
@@ -152,6 +160,7 @@ export async function POST(req: Request) {
       matchesFinished: applied.finishedMatchIds.length,
       unmatched: applied.unmatched,
       predictionsRescored: rescored,
+      roundAwardsAffected,
     });
   } catch (err) {
     return NextResponse.json(

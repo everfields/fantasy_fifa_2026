@@ -398,6 +398,27 @@ export function pickRoundWinners(
 }
 
 /**
+ * Resolve the prize distribution that applies to a SPECIFIC round.
+ *
+ * The pool eased into the prize ladder (ADR-0018): the very first sprint
+ * (`group-md1`) pays ONLY its winner (`distribution[0]` — the 1º prize), while
+ * every later round pays the full ladder. Centralising the rule here keeps the
+ * automatic round-close settlement (`recomputeRoundAwards`) and the manual
+ * recalc perfectly consistent — both ask this function which ladder to use.
+ *
+ * Pure: derives the per-round ladder from the base distribution; no point
+ * values originate here.
+ */
+export function distributionForRound(
+  roundKey: RoundKey,
+  distribution: readonly number[],
+): readonly number[] {
+  // group-md1 = winner-takes-all: just the first (1º) prize.
+  if (roundKey === "group-md1") return distribution.slice(0, 1);
+  return distribution;
+}
+
+/**
  * Human-readable summary of a meta-volante prize distribution, grouping
  * consecutive positions with the same prize:
  * `[100, 50, 50, 20, 20, 20, 20]` → `"1º +100 · 2º–3º +50 · 4º–7º +20"`.

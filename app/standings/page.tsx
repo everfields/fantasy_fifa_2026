@@ -122,15 +122,17 @@ const ROUND_SEQ = [
 ] as const;
 
 /**
- * Provisional standing of the round currently in progress: the earliest
- * started round without a granted award. Sums already-awarded prediction
- * points per user (display only — the real award is granted by the manual
- * recalc at round close, ADR rule 5 untouched).
+ * Provisional standing of the round currently in progress: the earliest round
+ * that has STARTED (≥1 non-scheduled match) but is NOT yet complete (≥1 match
+ * still unfinished). A fully-finished round is never "in progress" — once its
+ * last match ends it moves to the palmarés (its award is granted automatically,
+ * ADR-0018), so the live board advances to the next round on its own instead of
+ * staying stuck on a closed round. Sums already-awarded prediction points per
+ * user (display only — the persisted award is written by the settlement helper).
  */
 function buildLiveRound(
   matches: Match[],
   predictions: Prediction[],
-  awards: RoundAward[],
 ): LiveRound | null {
   const keyOf = (m: Match): string | null => {
     try {
@@ -140,17 +142,25 @@ function buildLiveRound(
     }
   };
 
-  const awarded = new Set(awards.map((a) => a.round_key));
-  const started = new Set(
-    matches
-      .filter((m) => m.status !== "scheduled")
-      .map(keyOf)
-      .filter(Boolean) as string[],
-  );
-  const roundKey = ROUND_SEQ.find((k) => started.has(k) && !awarded.has(k));
+  const byRound = new Map<string, Match[]>();
+  for (const m of matches) {
+    const k = keyOf(m);
+    if (!k) continue;
+    const list = byRound.get(k);
+    if (list) list.push(m);
+    else byRound.set(k, [m]);
+  }
+
+  const roundKey = ROUND_SEQ.find((k) => {
+    const ms = byRound.get(k);
+    if (!ms || ms.length === 0) return false;
+    const started = ms.some((m) => m.status !== "scheduled");
+    const complete = ms.every((m) => m.status === "finished");
+    return started && !complete;
+  });
   if (!roundKey) return null;
 
-  const roundMatches = matches.filter((m) => keyOf(m) === roundKey);
+  const roundMatches = byRound.get(roundKey) ?? [];
   const byId = new Map(roundMatches.map((m) => [m.id, m]));
 
   const perUser = new Map<string, { round_points: number; exact_hits: number }>();
@@ -258,7 +268,7 @@ export default async function StandingsPage() {
   const teamName = new Map(teams.map((t) => [t.id, t.name]));
 
   const series = buildSeries(matches, predictions, standings);
-  const liveRound = buildLiveRound(matches, predictions, awards);
+  const liveRound = buildLiveRound(matches, predictions);
 
   // --- Cycling classifications (pure) -------------------------------------
   const peloton = groupPeloton(standings, {

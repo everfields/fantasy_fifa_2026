@@ -10,8 +10,8 @@ import type { Match } from "@/lib/types";
 import { adminActor, writeAudit } from "../_lib";
 import {
   loadAppSettings,
-  refreshStandings,
   rescoreMatches,
+  settleRoundAwardsAndRefresh,
 } from "@/app/api/_lib";
 
 export type MatchActionState = { ok: boolean; message: string };
@@ -65,11 +65,16 @@ export async function saveResult(
   if (error) return { ok: false, message: `Error: ${error.message}` };
 
   // Rescore this match's predictions in place (idempotent — only changed rows
-  // are written; a non-finished status clears points back to null). The full
-  // manual recalc remains the tool for jokers/bonus/meta volante.
+  // are written; a non-finished status clears points back to null), then settle
+  // the meta-volante round awards automatically if saving this result completed
+  // a round (ADR-0018). The full manual recalc remains the tool for jokers/bonus.
   const settings = await loadAppSettings(supabase);
   const rescore = await rescoreMatches(supabase, [match_id], settings.scoring);
-  if (rescore.rescored > 0) await refreshStandings(supabase);
+  const awards = await settleRoundAwardsAndRefresh(
+    supabase,
+    settings,
+    rescore.rescored,
+  );
 
   await writeAudit({
     actor,
@@ -81,17 +86,27 @@ export async function saveResult(
       away_score: before.away_score,
       status: before.status,
     },
-    after: { home_score, away_score, status, rescored: rescore.rescored },
+    after: {
+      home_score,
+      away_score,
+      status,
+      rescored: rescore.rescored,
+      roundAwardsAffected: awards.awardsAffected,
+    },
   });
 
   revalidatePath("/admin/matches");
   revalidatePath("/standings");
   revalidatePath("/dashboard");
+  const metaNote =
+    awards.awardsAffected > 0
+      ? ` Meta volante actualizada (${awards.awardsAffected} premios).`
+      : "";
   return {
     ok: true,
     message:
       status === "finished"
-        ? `Resultado guardado y puntos repartidos (${rescore.rescored} predicciones actualizadas).`
+        ? `Resultado guardado y puntos repartidos (${rescore.rescored} predicciones actualizadas).${metaNote}`
         : "Partido actualizado.",
   };
 }

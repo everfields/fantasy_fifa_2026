@@ -14,6 +14,7 @@ import {
   recomputePredictionPoints,
   pickRoundAwards,
   roundKeyForMatch,
+  distributionForRound,
 } from "@/lib/scoring";
 import type {
   IdentifiablePrediction,
@@ -630,7 +631,10 @@ export async function recomputeRoundAwards(
         exact_hits: v.exact_hits,
       }),
     );
-    const winners: RoundWinner[] = pickRoundAwards(entries, distribution);
+    const winners: RoundWinner[] = pickRoundAwards(
+      entries,
+      distributionForRound(key, distribution),
+    );
     for (const w of winners) {
       desired.push({
         round_key: key,
@@ -734,4 +738,35 @@ export async function recomputeRoundAwards(
   }
 
   return result;
+}
+
+/**
+ * Post-finish settlement shared by the automatic scoring paths (the
+ * `update-results` cron, `sync-now`, and the admin single-match save).
+ *
+ * ADR-0018: meta-volante round awards are now granted AUTOMATICALLY the moment a
+ * round's last match finishes — no longer manual-only. After a match's
+ * predictions have been (re)scored, this recomputes the round awards
+ * IDEMPOTENTLY (only fully-finished rounds award; `recomputeRoundAwards` never
+ * double-counts) and refreshes `standings_cache` when EITHER predictions or
+ * awards changed (round_awards.points feed standings via `refresh_standings()`).
+ *
+ * Jokers and bonus answers still require the full manual recalc — this settles
+ * predictions + meta volante only, exactly the data that a finishing match can
+ * affect on its own.
+ */
+export async function settleRoundAwardsAndRefresh(
+  supabase: ServiceClient,
+  settings: AppSettings,
+  predictionsRescored: number,
+): Promise<RoundAwardsResult> {
+  const awards = await recomputeRoundAwards(
+    supabase,
+    settings.scoring,
+    settings.meta_volante_distribution,
+  );
+  if (predictionsRescored > 0 || awards.awardsAffected > 0) {
+    await refreshStandings(supabase);
+  }
+  return awards;
 }

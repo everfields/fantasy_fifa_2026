@@ -13,6 +13,7 @@ import {
   roundKeyForMatch,
   pickRoundWinners,
   pickRoundAwards,
+  distributionForRound,
   formatDistribution,
   type ScorableMatch,
   type RoundEntry,
@@ -581,6 +582,39 @@ test("pickRoundAwards: single-prize distribution equals pickRoundWinners", () =>
     pickRoundAwards(entries, [100]),
     pickRoundWinners(entries, 100),
   );
+});
+
+// ---------------------------------------------------------------------------
+// distributionForRound — group-md1 is winner-takes-all (ADR-0018)
+// ---------------------------------------------------------------------------
+test("distributionForRound: group-md1 pays only the 1º prize", () => {
+  assert.deepEqual(
+    distributionForRound("group-md1", [100, 50, 50, 20, 20, 20, 20]),
+    [100],
+  );
+});
+
+test("distributionForRound: every other round keeps the full ladder", () => {
+  const full = [100, 50, 50, 20, 20, 20, 20];
+  for (const k of [
+    "group-md2",
+    "group-md3",
+    "round_of_32",
+    "round_of_16",
+    "quarter",
+    "semi",
+    "final",
+  ]) {
+    assert.deepEqual(distributionForRound(k, full), full);
+  }
+});
+
+test("distributionForRound: group-md1 winner-takes-all => single award of 1º prize", () => {
+  const entries = [entry("a", 560, 6), entry("b", 480, 6), entry("c", 430, 3)];
+  const dist = distributionForRound("group-md1", [100, 50, 50, 20, 20, 20, 20]);
+  assert.deepEqual(pickRoundAwards(entries, dist), [
+    { user_id: "a", points: 100, round_points: 560 },
+  ]);
 });
 
 // ---------------------------------------------------------------------------

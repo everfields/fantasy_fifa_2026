@@ -27,8 +27,8 @@ import {
   loadAppSettings,
   loadMatchRows,
   loadTeamCodeById,
-  refreshStandings,
   rescoreMatches,
+  settleRoundAwardsAndRefresh,
 } from "../../_lib";
 
 export const runtime = "nodejs";
@@ -72,6 +72,7 @@ export async function GET(req: Request) {
     );
 
     let rescored = 0;
+    let roundAwardsAffected = 0;
     if (finishedChanged.length > 0) {
       const result = await rescoreMatches(
         supabase,
@@ -79,10 +80,14 @@ export async function GET(req: Request) {
         settings.scoring,
       );
       rescored = result.rescored;
-      // Only touch standings when something actually changed.
-      if (result.rescored > 0) {
-        await refreshStandings(supabase);
-      }
+      // A finishing match can complete a meta-volante round → settle its awards
+      // automatically (idempotent) and refresh standings if anything changed.
+      const awards = await settleRoundAwardsAndRefresh(
+        supabase,
+        settings,
+        result.rescored,
+      );
+      roundAwardsAffected = awards.awardsAffected;
     }
 
     return NextResponse.json({
@@ -93,6 +98,7 @@ export async function GET(req: Request) {
       matchesFinished: applied.finishedMatchIds.length,
       unmatched: applied.unmatched,
       predictionsRescored: rescored,
+      roundAwardsAffected,
     });
   } catch (err) {
     return NextResponse.json(

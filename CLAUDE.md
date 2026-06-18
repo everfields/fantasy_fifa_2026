@@ -63,8 +63,13 @@ standings by `refresh_standings()`. Never hand-edit `points_awarded` — recalc 
 points desc → exact hits desc; full ties split the tied positions' prize sum (`floor`, remainder
 dropped); only players with `round_points > 0` earn. Stored in `round_awards`, summed into
 `standings_cache.meta_points` + total by `refresh_standings()`. Rounds: group-md1/2/3
-(`matches.matchday`) + each knockout stage (third_place folds into final). Computed in the MANUAL
-recalc only (`pickRoundAwards` in `lib/scoring`). See `docs/decisions/0015`.
+(`matches.matchday`) + each knockout stage (third_place folds into final). **The first sprint
+(`group-md1`) is winner-takes-all** (only `distribution[0]`); every later round pays the full ladder —
+`distributionForRound(roundKey, distribution)` in `lib/scoring` (ADR-0018). **Awards settle
+AUTOMATICALLY when a round's last match finishes** (`settleRoundAwardsAndRefresh` →
+`recomputeRoundAwards`, idempotent, wired into the `update-results` cron, `sync-now` and the admin
+`saveResult`); jokers/bonus still need the full MANUAL recalc. `pickRoundAwards` in `lib/scoring`. See
+`docs/decisions/0015` + `docs/decisions/0018`.
 
 **Pot (money):** `entry_fee` 20 €/player; 2º gets the stake back; 20 € `pot_expenses` (domain + infra)
 reimbursed to the organizer; 1º takes the rest. Math in `lib/pot.ts`; `pot_amount` is derived
