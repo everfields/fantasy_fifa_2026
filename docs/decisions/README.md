@@ -28,6 +28,19 @@ significant change. Read newest-to-oldest to understand how the system got to wh
 | [0016](0016-maillot-azul-ui-consistency.md) | 2026-06-12 | Maillot azul + consistencia visual y de lenguaje en las clasificaciones | Accepted | `MaillotKey` += `azul`: lo viste todo ganador de ronda de meta volante (varios a la vez; `assignMaillots` con `roundAwards`); terminología «corredor» en toda UI de clasificaciones; `RankBadge`/`initials` compartidos (`components/classifications.tsx`) + chrome unificado; en móvil `/standings` sin h1 ni botón Bote — el bote vive en `/rules`; `PotDialog` eliminado |
 | [0017](0017-extremadura-monars-classifications.md) | 2026-06-14 | Clasificaciones Extremadura y Monars (maillots de peña) | Accepted | Dos maillots de roster fijo por email (mecánica del `blanco`): `extremadura` (bandera extremeña verde/blanco/negro) y `monars` (bandera de Canarias con "M"); el maillot lo viste el mejor de la general del roster; dos pestañas en `/standings` tras "Jóvenes"; sin DB ni recalc — derivado en render |
 | [0018](0018-meta-volante-auto-settlement.md) | 2026-06-18 | Meta volante — liquidación automática al cerrar la ronda + 1ª ronda winner-takes-all | Accepted | Los premios de ronda se otorgan SOLOS al terminar el último partido (helper `settleRoundAwardsAndRefresh` en cron/sync-now/`saveResult`, idempotente; jokers/bonus siguen manuales); `distributionForRound` hace `group-md1` winner-takes-all y el resto escalera completa; `buildLiveRound` pasa a basarse en completitud (una ronda cerrada ya no se queda "en curso") |
+| [0019](0019-bonus-answers-reveal.md) | 2026-06-24 | Revelar las respuestas bonus del resto del grupo tras el cierre | Accepted | Reutiliza la RLS existente de `bonus_answers` (propias siempre; ajenas solo tras `locks_at`): panel desplegable "Respuestas del grupo" bajo cada pregunta cerrada en `/bonus` + vista por jugador en `/bonus/[playerId]` con selector de corredores. Sin migración ni recalc; nunca expone emails |
+
+## Everything in one document
+
+Prefer a single combined view? Run `npm run adr:build` (generator:
+[`build-combined.mjs`](build-combined.mjs)) to regenerate two always-in-sync artifacts from the
+individual ADR files:
+
+- **[`ALL.md`](ALL.md)** — every ADR concatenated, with a TOC. Renders on GitHub / in any editor.
+- **[`index.html`](index.html)** — a self-contained browsable page (sidebar TOC + rendered
+  markdown, light/dark). Open it directly in a browser.
+
+Both are generated; **don't edit them by hand** — edit the source `NNNN-*.md` and re-run the build.
 
 ## How to add a decision
 
@@ -38,6 +51,7 @@ significant change. Read newest-to-oldest to understand how the system got to wh
    line in `CLAUDE.md` and link back to the ADR. Do **not** edit `PROJECT_PLAN.md`.
 5. Keep ADRs append-only: don't rewrite history. To reverse a past decision, write a *new* ADR that
    supersedes it and set the old one's status to `Superseded by NNNN`.
+6. Run `npm run adr:build` to refresh the combined `ALL.md` / `index.html`.
 
 ## Conventions
 

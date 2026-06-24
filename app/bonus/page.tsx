@@ -1,8 +1,14 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import type { BonusAnswer, BonusCategory, BonusQuestion } from "@/lib/types";
+import type {
+  BonusAnswer,
+  BonusCategory,
+  BonusQuestion,
+  Profile,
+} from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -10,60 +16,58 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { initials } from "@/components/classifications";
 import { Countdown } from "@/components/Countdown";
 
 import { AppShell } from "../_components/shell";
 import { BonusForm } from "./bonus-form";
 import { BonusBlocks, type BlockMeta } from "./bonus-blocks";
+import { AnswersReveal, type RevealRow } from "./answers-reveal";
+import { BLOCKS, TYPE_LABEL } from "./blocks";
 
 export const metadata = { title: "Bonus · Resiporra 26" };
 export const dynamic = "force-dynamic";
-
-const TYPE_LABEL: Record<BonusQuestion["type"], string> = {
-  single: "Una opción",
-  multi: "Varias opciones",
-  numeric: "Numérica",
-  text: "Texto libre",
-};
-
-const BLOCKS: {
-  category: BonusCategory;
-  title: string;
-  description: string;
-}[] = [
-  {
-    category: "group_winner",
-    title: "Campeón de grupo",
-    description: "Acierta quién gana cada grupo de la fase de grupos.",
-  },
-  {
-    category: "spain_scorer",
-    title: "Primer goleador — partidos de España",
-    description: "Predice quién marca el primer gol en cada partido de España.",
-  },
-  {
-    category: "tournament",
-    title: "Preguntas del torneo",
-    description: "Campeón, pichichi, sorpresas… los grandes pronósticos.",
-  },
-];
 
 export default async function BonusPage() {
   const profile = await requireUser();
   const supabase = createClient();
   const now = Date.now();
 
-  const [{ data: qData }, { data: aData }] = await Promise.all([
+  // RLS returns: my own answers (always) + everyone's answers to LOCKED
+  // questions. Pre-lock, others' picks stay hidden (no spoilers).
+  const [{ data: qData }, { data: aData }, { data: pData }] = await Promise.all([
     supabase
       .from("bonus_questions")
       .select("*")
       .order("locks_at", { ascending: true }),
-    supabase.from("bonus_answers").select("*").eq("user_id", profile.id),
+    supabase.from("bonus_answers").select("*"),
+    supabase
+      .from("profiles")
+      .select("id, display_name, avatar, role, joker_count, created_at")
+      .order("display_name", { ascending: true }),
   ]);
 
   const questions = (qData as BonusQuestion[] | null) ?? [];
-  const answers = (aData as BonusAnswer[] | null) ?? [];
+  const allAnswers = (aData as BonusAnswer[] | null) ?? [];
+  const players = (pData as Profile[] | null) ?? [];
+  const profilesById = new Map(players.map((p) => [p.id, p]));
+
+  // My own answers drive the editable form.
+  const answers = allAnswers.filter((a) => a.user_id === profile.id);
   const answerByQ = new Map(answers.map((a) => [a.question_id, a]));
+
+  // Every readable answer, grouped by question, for the post-lock reveal.
+  const answersByQ = new Map<string, BonusAnswer[]>();
+  for (const a of allAnswers) {
+    const list = answersByQ.get(a.question_id);
+    if (list) list.push(a);
+    else answersByQ.set(a.question_id, [a]);
+  }
 
   // Questions are already ordered by locks_at ascending from the query, so
   // grouping below preserves that order within each block.
@@ -82,6 +86,22 @@ export default async function BonusPage() {
           ? q.correct_answer.join(", ")
           : String(q.correct_answer)
         : null;
+
+    // Group answers, revealed only once the question has locked. Sorted by
+    // display name with the current user flagged "(tú)".
+    const revealRows: RevealRow[] = locked
+      ? (answersByQ.get(q.id) ?? [])
+          .map((a) => ({
+            answer: a,
+            player: profilesById.get(a.user_id) ?? null,
+            isMe: a.user_id === profile.id,
+          }))
+          .sort((x, y) =>
+            (x.player?.display_name ?? "").localeCompare(
+              y.player?.display_name ?? "",
+            ),
+          )
+      : [];
 
     return (
       <Card key={q.id} className="overflow-hidden">
@@ -117,6 +137,7 @@ export default async function BonusPage() {
               <span className="font-semibold">{revealCorrect}</span>
             </p>
           )}
+          {locked && <AnswersReveal rows={revealRows} />}
         </CardContent>
       </Card>
     );
@@ -186,6 +207,70 @@ export default async function BonusPage() {
               initialSelected={initialSelected}
               panels={panels}
             />
+          );
+        })()}
+
+        {(() => {
+          // Per-player reveal picker: only players with at least one answer to
+          // an already-locked question (i.e. something readable to show).
+          const lockedQ = new Set(
+            questions
+              .filter((q) => new Date(q.locks_at).getTime() <= now)
+              .map((q) => q.id),
+          );
+          const revealableIds = new Set(
+            allAnswers
+              .filter((a) => lockedQ.has(a.question_id))
+              .map((a) => a.user_id),
+          );
+          const roster = players.filter((p) => revealableIds.has(p.id));
+          if (roster.length === 0) return null;
+
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Respuestas por jugador
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Cotillea las respuestas (ya cerradas) de cada corredor.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {roster.map((p) => {
+                    const isMe = p.id === profile.id;
+                    return (
+                      <Link
+                        key={p.id}
+                        href={`/bonus/${p.id}`}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-secondary"
+                      >
+                        <Avatar className="h-8 w-8">
+                          {p.avatar && (
+                            <AvatarImage src={p.avatar} alt={p.display_name} />
+                          )}
+                          <AvatarFallback className="text-xs">
+                            {initials(p.display_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate text-sm font-semibold">
+                          {p.display_name}
+                          {isMe && (
+                            <span className="ml-1.5 text-xs font-medium text-primary">
+                              (tú)
+                            </span>
+                          )}
+                        </span>
+                        <span aria-hidden className="text-muted-foreground">
+                          →
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           );
         })()}
       </div>

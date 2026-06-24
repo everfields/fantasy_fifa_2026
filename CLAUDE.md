@@ -52,6 +52,10 @@ from the admin (cascade + audit + standings refresh). Group winner = auto-genera
 per group (admin button, 50 pts). The manual recalc grades predictions AND bonus answers.
 Questions carry a `category` (`group_winner | spain_scorer | tournament`) rendered as 3 visual
 blocks in `/bonus` and `/admin/bonus` (see `docs/decisions/0006-bonus-categories.md`).
+**Bonus answers are visible to the whole group ONLY after each question locks** (same RLS model as
+predictions, vs `bonus_questions.locks_at`): a collapsible "Respuestas del grupo" panel under each
+locked question card in `/bonus`, plus a per-player view at `/bonus/[playerId]` with a roster picker.
+Pre-lock only the owner sees a pick (no spoilers); no schema/recalc change (ADR-0019).
 
 **Point adjustments:** arbitrary ± points per player for unforeseen events live in
 `point_adjustments` (reason required, admin-only writes, UI in `/admin/users`); summed into
