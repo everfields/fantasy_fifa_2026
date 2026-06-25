@@ -49,7 +49,11 @@ Target joker counts (admin picks freely): group 1/matchday = 3, R32 = 2, R16 = 2
 is graded **manually per answer by the admin** (`bonus_answers.manual_correct`, panel in
 `/admin/bonus`) — never by string comparison (see `docs/decisions/0004`). Questions can be deleted
 from the admin (cascade + audit + standings refresh). Group winner = auto-generated `single` bonus
-per group (admin button, 50 pts). The manual recalc grades predictions AND bonus answers.
+per group (admin button, 50 pts). Closing a question (setting `correct_answer`) grades that
+question's answers IN PLACE and refreshes standings; the manual recalc also grades predictions AND
+all bonus answers. The `bonus_answers` protect trigger MUST be `security invoker` — as `security
+definer` its `current_user` exemption never matched `service_role`, silently reverting every
+scored `points_awarded` to null so bonus points never reached standings (ADR-0020, migration 0012).
 Questions carry a `category` (`group_winner | spain_scorer | tournament`) rendered as 3 visual
 blocks in `/bonus` and `/admin/bonus` (see `docs/decisions/0006-bonus-categories.md`).
 **Bonus answers are visible to the whole group ONLY after each question locks** (same RLS model as

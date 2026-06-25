@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { scoreBonusAnswer } from "@/lib/scoring";
 import type { BonusAnswer, BonusQuestion, Match, Team } from "@/lib/types";
 
 import { adminActor, getAppSettingsAdmin, writeAudit } from "../_lib";
@@ -142,8 +143,12 @@ const closeSchema = z
 
 /**
  * "Close" a question by recording its correct answer. For `multi`, several
- * `correct_answer` values may be submitted. Setting the correct answer is what
- * lets the scoring engine grade it; recalc still has to be run afterwards.
+ * `correct_answer` values may be submitted. Setting the correct answer lets the
+ * scoring engine grade it, so we grade this question's answers IN PLACE (same
+ * idempotent engine as the full recalc) and refresh standings immediately —
+ * mirroring `gradeTextAnswer`. This closes the footgun where closing a
+ * group-winner / option question left every `points_awarded` null until the
+ * admin remembered to run the separate manual recalc.
  */
 export async function closeBonus(
   _prev: BonusActionState,
@@ -184,19 +189,55 @@ export async function closeBonus(
     .eq("id", id);
   if (error) return { ok: false, message: `Error: ${error.message}` };
 
+  // Grade this question's answers in place with the pure scoring engine and
+  // refresh standings — same idempotent path the full recalc uses, scoped to
+  // this question. Only rows whose recomputed points differ are written.
+  const question: BonusQuestion = {
+    ...(before as BonusQuestion),
+    correct_answer,
+  };
+  const { data: answerRows } = await supabase
+    .from("bonus_answers")
+    .select("*")
+    .eq("question_id", id);
+  const answers = (answerRows as BonusAnswer[] | null) ?? [];
+
+  let graded = 0;
+  for (const a of answers) {
+    const next = scoreBonusAnswer(a.answer, question, a.manual_correct);
+    if (next === a.points_awarded) continue;
+    const { error: gradeError } = await supabase
+      .from("bonus_answers")
+      .update({ points_awarded: next })
+      .eq("id", a.id);
+    if (gradeError) {
+      return { ok: false, message: `Error al puntuar: ${gradeError.message}` };
+    }
+    graded++;
+  }
+
+  const { error: rpcError } = await supabase.rpc("refresh_standings");
+  if (rpcError) {
+    return {
+      ok: false,
+      message: `Respuesta guardada, pero falló refresh_standings: ${rpcError.message}`,
+    };
+  }
+
   await writeAudit({
     actor,
     action: "close_bonus_question",
     target_type: "bonus_question",
     target_id: id,
     before: { correct_answer: before?.correct_answer ?? null },
-    after: { correct_answer },
+    after: { correct_answer, graded },
   });
 
   revalidatePath("/admin/bonus");
+  revalidatePath("/standings");
   return {
     ok: true,
-    message: "Respuesta correcta guardada. Ejecuta «Recalcular» para repartir los puntos.",
+    message: `Respuesta correcta guardada y ${graded} respuesta(s) puntuada(s). Clasificación actualizada.`,
   };
 }
 
