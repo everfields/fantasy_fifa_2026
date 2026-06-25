@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/guards";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { selectAll } from "@/lib/supabase/paginate";
 import type {
   BonusAnswer,
   MaillotKey,
@@ -223,9 +224,9 @@ export default async function StandingsPage() {
   const [
     { data: standingsData },
     { data: matchData },
-    { data: predData },
+    predictions,
     { data: awardData },
-    { data: bonusData },
+    bonusAnswers,
     { data: profileData },
     { data: teamData },
     emailByUserId,
@@ -236,9 +237,13 @@ export default async function StandingsPage() {
       .select("*")
       .order("rank", { ascending: true }),
     supabase.from("matches").select("*"),
-    supabase.from("predictions").select("*"),
+    // predictions can exceed PostgREST's 1000-row cap — page through it, else
+    // the live meta-volante board under-counts (ADR-0021).
+    selectAll<Prediction>(() => supabase.from("predictions").select("*")),
     supabase.from("round_awards").select("*"),
-    supabase.from("bonus_answers").select("user_id, points_awarded"),
+    selectAll<Pick<BonusAnswer, "user_id" | "points_awarded">>(() =>
+      supabase.from("bonus_answers").select("user_id, points_awarded"),
+    ),
     supabase.from("profiles").select("id, created_at"),
     supabase.from("teams").select("id, name, code"),
     loadEmailMap(),
@@ -247,12 +252,7 @@ export default async function StandingsPage() {
 
   const rawStandings = (standingsData as StandingRow[] | null) ?? [];
   const matches = (matchData as Match[] | null) ?? [];
-  const predictions = (predData as Prediction[] | null) ?? [];
   const awards = (awardData as RoundAward[] | null) ?? [];
-  const bonusAnswers = (bonusData as Pick<
-    BonusAnswer,
-    "user_id" | "points_awarded"
-  >[] | null) ?? [];
   const profiles = (profileData as { id: string; created_at: string }[] | null) ?? [];
   const teams = (teamData as Pick<Team, "id" | "name" | "code">[] | null) ?? [];
 

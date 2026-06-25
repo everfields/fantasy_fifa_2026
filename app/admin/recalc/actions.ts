@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { selectAll } from "@/lib/supabase/paginate";
 import {
   recomputePredictionPoints,
   scoreBonusAnswer,
@@ -73,12 +74,13 @@ async function computeChanges(): Promise<{
   const supabase = createServiceClient();
   const settings = await getAppSettingsAdmin();
 
-  const [{ data: preds }, { data: matches }] = await Promise.all([
-    supabase.from("predictions").select("*"),
+  const [predictions, { data: matches }] = await Promise.all([
+    // Page past PostgREST's 1000-row cap, else recalc silently skips the
+    // overflow predictions and never rescores them (ADR-0021).
+    selectAll<Prediction>(() => supabase.from("predictions").select("*")),
     supabase.from("matches").select("*"),
   ]);
 
-  const predictions = (preds as Prediction[] | null) ?? [];
   const matchList = (matches as Match[] | null) ?? [];
 
   const matchesById = new Map<string, ScorableMatch>();
@@ -135,12 +137,11 @@ async function computeBonusChanges(): Promise<{
 }> {
   const supabase = createServiceClient();
 
-  const [{ data: answers }, { data: questions }] = await Promise.all([
-    supabase.from("bonus_answers").select("*"),
+  const [answerList, { data: questions }] = await Promise.all([
+    selectAll<BonusAnswer>(() => supabase.from("bonus_answers").select("*")),
     supabase.from("bonus_questions").select("*"),
   ]);
 
-  const answerList = (answers as BonusAnswer[] | null) ?? [];
   const questionList = (questions as BonusQuestion[] | null) ?? [];
   const questionsById = new Map(questionList.map((q) => [q.id, q]));
 

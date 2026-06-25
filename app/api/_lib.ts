@@ -24,6 +24,7 @@ import type {
 } from "@/lib/scoring";
 import type { ProviderMatch } from "@/lib/providers";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { selectAll } from "@/lib/supabase/paginate";
 import {
   AppSettings,
   DEFAULT_APP_SETTINGS,
@@ -295,18 +296,24 @@ export async function rescoreMatches(
     });
   }
 
-  // Load predictions for those matches.
-  const { data: predRows, error: pErr } = await supabase
-    .from("predictions")
-    .select("id, match_id, home_pred, away_pred, is_joker, points_awarded")
-    .in("match_id", matchIds);
-  if (pErr || !predRows) return empty;
-
-  const predictions: IdentifiablePrediction[] = (
-    predRows as Array<
+  // Load predictions for those matches. Page past PostgREST's 1000-row cap —
+  // a full recalc over every finished match exceeds it, and the dropped tail
+  // would never be rescored (ADR-0021).
+  let predRows: Array<IdentifiablePrediction & { points_awarded: number | null }>;
+  try {
+    predRows = await selectAll<
       IdentifiablePrediction & { points_awarded: number | null }
-    >
-  ).map((p) => ({
+    >(() =>
+      supabase
+        .from("predictions")
+        .select("id, match_id, home_pred, away_pred, is_joker, points_awarded")
+        .in("match_id", matchIds),
+    );
+  } catch {
+    return empty;
+  }
+
+  const predictions: IdentifiablePrediction[] = predRows.map((p) => ({
     id: p.id,
     match_id: p.match_id,
     home_pred: p.home_pred,
@@ -582,13 +589,21 @@ export async function recomputeRoundAwards(
     }
   }
 
-  // 4. Load predictions for the eligible matches.
-  const { data: predData, error: pErr } = await supabase
-    .from("predictions")
-    .select("user_id, match_id, home_pred, away_pred, points_awarded")
-    .in("match_id", Array.from(eligibleMatchIds));
-  if (pErr) return empty;
-  const predictions = (predData ?? []) as RoundPredictionRow[];
+  // 4. Load predictions for the eligible matches. Page past PostgREST's
+  //    1000-row cap — once several rounds are eligible the prediction set
+  //    exceeds it, and a truncated tally would mis-award the meta volante
+  //    (ADR-0021).
+  let predictions: RoundPredictionRow[];
+  try {
+    predictions = await selectAll<RoundPredictionRow>(() =>
+      supabase
+        .from("predictions")
+        .select("user_id, match_id, home_pred, away_pred, points_awarded")
+        .in("match_id", Array.from(eligibleMatchIds)),
+    );
+  } catch {
+    return empty;
+  }
 
   // 5. Tally per-round, per-user entries.
   //    round -> user -> { round_points, exact_hits }
