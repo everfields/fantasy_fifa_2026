@@ -11,6 +11,7 @@ import { LlmWebSearchProvider } from "@/lib/providers/llmWebSearch";
 
 export type {
   FootballDataProvider,
+  LiveMatchesResult,
   ProviderMatch,
   ProviderTeam,
 } from "@/lib/providers/FootballDataProvider";

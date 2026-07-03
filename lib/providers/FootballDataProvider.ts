@@ -26,6 +26,12 @@ export interface ProviderMatch {
   status: MatchStatus;
 }
 
+export interface LiveMatchesResult {
+  matches: ProviderMatch[];
+  candidatesInWindow: number;   // matches that were due a poll this run
+  providerError: string | null; // first upstream failure (HTTP status + trimmed message), null if clean
+}
+
 export interface FootballDataProvider {
   /** Stable provider name for logging/audit. */
   readonly name: string;
@@ -34,7 +40,7 @@ export interface FootballDataProvider {
   /** Full tournament schedule. */
   getMatches(): Promise<ProviderMatch[]>;
   /** Matches that are live or recently finished — used by the polling cron. */
-  getLiveMatches(): Promise<ProviderMatch[]>;
+  getLiveMatches(): Promise<LiveMatchesResult>;
   /** Single match by provider id (force-sync). */
   getMatch(providerId: string): Promise<ProviderMatch | null>;
 }

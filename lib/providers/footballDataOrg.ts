@@ -16,6 +16,7 @@
 
 import type {
   FootballDataProvider,
+  LiveMatchesResult,
   ProviderMatch,
   ProviderTeam,
 } from "@/lib/providers/FootballDataProvider";
@@ -203,14 +204,19 @@ export class FootballDataOrgProvider implements FootballDataProvider {
     return matches.map(mapMatch);
   }
 
-  async getLiveMatches(): Promise<ProviderMatch[]> {
+  async getLiveMatches(): Promise<LiveMatchesResult> {
     // Global matches feed filtered to live statuses for this competition.
     // VERIFY: the `status`/`competitions` filter combo on the free plan.
-    const data = await fdoFetch<{ matches?: FdoMatch[] }>(
-      `/matches?competitions=${COMPETITION_CODE}&status=IN_PLAY,PAUSED,FINISHED`
-    );
-    const matches = Array.isArray(data.matches) ? data.matches : [];
-    return matches.map(mapMatch);
+    try {
+      const data = await fdoFetch<{ matches?: FdoMatch[] }>(
+        `/matches?competitions=${COMPETITION_CODE}&status=IN_PLAY,PAUSED,FINISHED`
+      );
+      const matches = (Array.isArray(data.matches) ? data.matches : []).map(mapMatch);
+      return { matches, candidatesInWindow: matches.length, providerError: null };
+    } catch (err) {
+      const providerError = ((err as Error).message ?? String(err)).slice(0, 200);
+      return { matches: [], candidatesInWindow: 0, providerError };
+    }
   }
 
   async getMatch(providerId: string): Promise<ProviderMatch | null> {

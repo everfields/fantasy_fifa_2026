@@ -27,6 +27,7 @@ import {
   loadAppSettings,
   loadMatchRows,
   loadTeamCodeById,
+  propagateKnockoutBracket,
   rescoreMatches,
   settleRoundAwardsAndRefresh,
 } from "../../_lib";
@@ -46,8 +47,25 @@ export async function GET(req: Request) {
     const supabase = createServiceClient();
     const provider = getProvider();
 
-    // 1. Provider live/recent matches.
-    const providerMatches = await provider.getLiveMatches();
+    // 1. Provider live/recent matches. The provider now returns a richer
+    //    envelope: the matches array plus how many matches were due a poll this
+    //    run (`candidatesInWindow`) and the first upstream failure, if any
+    //    (`providerError`). Surfacing these lets a single Supabase
+    //    `net._http_response` query detect a silent provider outage — the 2026
+    //    incident where the dead Anthropic key made the cron report
+    //    `ok:true, providerMatches:0` for 10 days with no error recorded.
+    const live = await provider.getLiveMatches();
+    const providerMatches = live.matches;
+    const candidates = live.candidatesInWindow;
+    const providerError = live.providerError;
+
+    // A provider failure does NOT fail the poll (the run itself executed): we
+    // still return HTTP 200 / ok:true so pg_net does not record an HTTP failure
+    // that would mask the informative body. But we log it and expose the string
+    // so the outage is visible in one query.
+    if (providerError) {
+      console.error("[cron/update-results] provider error:", providerError);
+    }
 
     // 2. Our rows + team-code index for matching.
     const [teamCodeById, dbMatches, settings] = await Promise.all([
@@ -73,6 +91,7 @@ export async function GET(req: Request) {
 
     let rescored = 0;
     let roundAwardsAffected = 0;
+    let bracketPropagated = 0;
     if (finishedChanged.length > 0) {
       const result = await rescoreMatches(
         supabase,
@@ -88,17 +107,24 @@ export async function GET(req: Request) {
         result.rescored,
       );
       roundAwardsAffected = awards.awardsAffected;
+      // A finishing knockout match may fill the next round's team slots
+      // (idempotent; only scheduled dependents are touched).
+      const propagated = await propagateKnockoutBracket(finishedChanged);
+      bracketPropagated = propagated.updatedMatchIds.length;
     }
 
     return NextResponse.json({
       ok: true,
       provider: provider.name,
       providerMatches: providerMatches.length,
+      candidates,
+      providerError,
       matchesUpdated: applied.changedMatchIds.length,
       matchesFinished: applied.finishedMatchIds.length,
       unmatched: applied.unmatched,
       predictionsRescored: rescored,
       roundAwardsAffected,
+      bracketPropagated,
     });
   } catch (err) {
     return NextResponse.json(

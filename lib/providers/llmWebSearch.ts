@@ -6,18 +6,24 @@
 // Requires ANTHROPIC_API_KEY (already in stack for Luis de la Tracker).
 // Optional: RESULTS_MODEL (defaults to claude-haiku-4-5).
 //
-// Poll windows (per match, relative to kickoff_at):
-//   half-time : kickoff+45min … kickoff+70min
-//   full-time : kickoff+115min … kickoff+6h
+// Poll windows (per match, minutes after kickoff):
+//   1. primer tiempo : [20′, 45′)  — first half in progress
+//   2. descanso      : [45′, 70′)  — half-time break / early second half
+//   3. segundo tiempo: [80′, 110′) — second half in progress
+//   4. final         : [115′, ∞)   — full time / extra time / penalties
+//                                     (DB 6h lookback guard limits effective upper bound)
 //
+// Windows 1-3 may update live scores/status but NEVER mark a match finished.
+// Window 4 is the only window that can yield status=finished (explicit FT only).
 // Zero LLM calls on non-match days or between windows.
-// Any API / parse failure → [] (never throws into the cron).
+// Any API / parse failure → providerError set, matches [] (never throws into the cron).
 // ============================================================================
 
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceClient } from "@/lib/supabase/server";
 import type {
   FootballDataProvider,
+  LiveMatchesResult,
   ProviderMatch,
   ProviderTeam,
 } from "@/lib/providers/FootballDataProvider";
@@ -83,14 +89,30 @@ interface ReportedResult {
 
 const MIN_TO_MS = 60_000;
 
-function isInPollWindow(kickoffIso: string, now: Date): boolean {
+/**
+ * Returns true when the match at kickoffIso should be polled at the given time.
+ * Four windows (minutes after kickoff):
+ *   1. primer tiempo  [20, 45)  — first half in progress
+ *   2. descanso       [45, 70)  — half-time break / early second half
+ *   3. segundo tiempo [80, 110) — second half in progress
+ *   4. final          [115, ∞)  — full time / extra time / penalties
+ * The DB 6h lookback guard in loadNonFinishedMatchesInWindow limits window 4's
+ * effective upper bound to kickoff+6h.
+ * Exported for unit testing.
+ */
+export function isDueForPoll(kickoffIso: string, now: Date): boolean {
   const kickoff = new Date(kickoffIso).getTime();
   const t = now.getTime();
-  const htStart = kickoff + 45 * MIN_TO_MS;
-  const htEnd = kickoff + 70 * MIN_TO_MS;
-  const ftStart = kickoff + 115 * MIN_TO_MS;
-  const ftEnd = kickoff + 6 * 60 * MIN_TO_MS;
-  return (t >= htStart && t <= htEnd) || (t >= ftStart && t <= ftEnd);
+  return (
+    // Window 1: primer tiempo
+    (t >= kickoff + 20 * MIN_TO_MS && t < kickoff + 45 * MIN_TO_MS) ||
+    // Window 2: descanso
+    (t >= kickoff + 45 * MIN_TO_MS && t < kickoff + 70 * MIN_TO_MS) ||
+    // Window 3: segundo tiempo
+    (t >= kickoff + 80 * MIN_TO_MS && t < kickoff + 110 * MIN_TO_MS) ||
+    // Window 4: final (open-ended; DB guard limits to kickoff+6h)
+    t >= kickoff + 115 * MIN_TO_MS
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -131,7 +153,7 @@ async function loadNonFinishedMatchesInWindow(
   const candidates: CandidateMatch[] = [];
 
   for (const m of data as MatchRow[]) {
-    if (!isInPollWindow(m.kickoff_at, now_)) continue;
+    if (!isDueForPoll(m.kickoff_at, now_)) continue;
     const home = m.home_team ? teamMap.get(m.home_team) : undefined;
     const away = m.away_team ? teamMap.get(m.away_team) : undefined;
     if (!home || !away) continue;
@@ -242,11 +264,12 @@ const REPORT_TOOL_SCHEMA = {
 
 async function callLlm(
   candidates: CandidateMatch[],
-): Promise<ReportedResult[]> {
+): Promise<{ results: ReportedResult[]; error: string | null }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.error("[llmWebSearch] ANTHROPIC_API_KEY not set");
-    return [];
+    const msg = "anthropic: ANTHROPIC_API_KEY not set";
+    console.error("[llmWebSearch]", msg);
+    return { results: [], error: msg };
   }
 
   const client = new Anthropic({ apiKey });
@@ -277,14 +300,18 @@ async function callLlm(
       ],
     });
   } catch (err) {
+    const e = err as Error & { status?: number };
+    const detail = (e.message ?? String(err)).slice(0, 200);
+    const msg =
+      e.status != null ? `anthropic ${e.status}: ${detail}` : `anthropic: ${detail}`;
     console.error("[llmWebSearch] Anthropic API error:", (err as Error).message);
-    return [];
+    return { results: [], error: msg };
   }
 
   for (const block of response.content) {
     if (block.type === "tool_use" && block.name === "report_match_results") {
       const input = block.input as { results?: unknown[] };
-      if (!Array.isArray(input?.results)) return [];
+      if (!Array.isArray(input?.results)) return { results: [], error: null };
       const results: ReportedResult[] = [];
       for (const r of input.results) {
         const item = r as Record<string, unknown>;
@@ -304,11 +331,11 @@ async function callLlm(
           });
         }
       }
-      return results;
+      return { results, error: null };
     }
   }
 
-  return [];
+  return { results: [], error: null };
 }
 
 // ----------------------------------------------------------------------------
@@ -364,10 +391,10 @@ function applyResults(
 
 async function runPipeline(
   candidates: CandidateMatch[],
-): Promise<ProviderMatch[]> {
-  if (candidates.length === 0) return [];
-  const reported = await callLlm(candidates);
-  return applyResults(candidates, reported);
+): Promise<{ matches: ProviderMatch[]; error: string | null }> {
+  if (candidates.length === 0) return { matches: [], error: null };
+  const { results, error } = await callLlm(candidates);
+  return { matches: applyResults(candidates, results), error };
 }
 
 // ----------------------------------------------------------------------------
@@ -385,18 +412,26 @@ export class LlmWebSearchProvider implements FootballDataProvider {
     return Promise.resolve([]);
   }
 
-  async getLiveMatches(): Promise<ProviderMatch[]> {
+  async getLiveMatches(): Promise<LiveMatchesResult> {
     try {
       const now = new Date();
       const candidates = await loadNonFinishedMatchesInWindow(now);
-      if (candidates.length === 0) return [];
-      return await runPipeline(candidates);
+      const candidatesInWindow = candidates.length;
+      if (candidates.length === 0) {
+        return { matches: [], candidatesInWindow: 0, providerError: null };
+      }
+      const { matches, error } = await runPipeline(candidates);
+      return { matches, candidatesInWindow, providerError: error };
     } catch (err) {
       console.error(
         "[llmWebSearch] getLiveMatches error:",
         (err as Error).message,
       );
-      return [];
+      return {
+        matches: [],
+        candidatesInWindow: 0,
+        providerError: `getLiveMatches: ${(err as Error).message ?? String(err)}`,
+      };
     }
   }
 
@@ -420,8 +455,8 @@ export class LlmWebSearchProvider implements FootballDataProvider {
         };
       }
 
-      const results = await runPipeline([candidate]);
-      return results.length > 0 ? results[0] : null;
+      const { matches } = await runPipeline([candidate]);
+      return matches.length > 0 ? matches[0] : null;
     } catch (err) {
       console.error(
         "[llmWebSearch] getMatch error:",

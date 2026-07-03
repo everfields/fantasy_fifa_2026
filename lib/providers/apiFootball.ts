@@ -17,6 +17,7 @@
 
 import type {
   FootballDataProvider,
+  LiveMatchesResult,
   ProviderMatch,
   ProviderTeam,
 } from "@/lib/providers/FootballDataProvider";
@@ -222,12 +223,18 @@ export class ApiFootballProvider implements FootballDataProvider {
     return response.map(mapFixture);
   }
 
-  async getLiveMatches(): Promise<ProviderMatch[]> {
+  async getLiveMatches(): Promise<LiveMatchesResult> {
     // `live` filter scoped to this league. VERIFY the param form on your plan.
-    const { response } = await afFetch<AfFixtureRow>(
-      `/fixtures?live=all&league=${LEAGUE_ID}&season=${SEASON}`
-    );
-    return response.map(mapFixture);
+    try {
+      const { response } = await afFetch<AfFixtureRow>(
+        `/fixtures?live=all&league=${LEAGUE_ID}&season=${SEASON}`
+      );
+      const matches = response.map(mapFixture);
+      return { matches, candidatesInWindow: matches.length, providerError: null };
+    } catch (err) {
+      const providerError = ((err as Error).message ?? String(err)).slice(0, 200);
+      return { matches: [], candidatesInWindow: 0, providerError };
+    }
   }
 
   async getMatch(providerId: string): Promise<ProviderMatch | null> {
