@@ -55,7 +55,9 @@ import { assignAstons, assignMaillots, sortGeneral } from "./maillots";
 
 /**
  * When a rider holds several maillots the scene draws ONE jersey: the first
- * hit in this order (leadership beats fixed-roster beats farolillo). The full
+ * hit in this order. Classification jerseys (amarillo/arcoíris/lunares/verde/
+ * blanco) beat the azul (meta volante) — winning a sprint never hides a
+ * leader's jersey; roster jerseys and the farolillo close the list. The full
  * set still travels in `EtapaRider.maillots` for chips/legends.
  */
 export const MAILLOT_PRIORITY: readonly MaillotKey[] = [
@@ -63,8 +65,8 @@ export const MAILLOT_PRIORITY: readonly MaillotKey[] = [
   "arcoiris",
   "lunares",
   "verde",
-  "azul",
   "blanco",
+  "azul",
   "extremadura",
   "monars",
   "rojo",

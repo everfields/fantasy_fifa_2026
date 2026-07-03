@@ -9,10 +9,16 @@
 import { test } from "vitest";
 import assert from "node:assert";
 
-import { buildEtapaTimeline, kitIndex, KIT_PALETTE_SIZE } from "./etapa";
+import {
+  buildEtapaTimeline,
+  kitIndex,
+  KIT_PALETTE_SIZE,
+  MAILLOT_PRIORITY,
+} from "./etapa";
 import { MAILLOT_ARCOIRIS_EMAIL } from "./config";
 import type {
   EtapaRider,
+  MaillotKey,
   Match,
   Prediction,
   StandingRow,
@@ -277,6 +283,14 @@ test("astons wear the F1 helmet; the last rider carries the lantern", () => {
   // stage 1 farolillo: tail tied at 0 → LARGEST created_at (fran).
   assert.strictEqual(rider(stages[0], "u-fran").farolillo, true);
   assert.strictEqual(rider(stages[0], "u-eva").farolillo, false);
+});
+
+test("jersey priority: classification jerseys always beat the azul", () => {
+  const idx = (k: MaillotKey) => MAILLOT_PRIORITY.indexOf(k);
+  const leaders: MaillotKey[] = ["amarillo", "arcoiris", "lunares", "verde", "blanco"];
+  for (const k of leaders) {
+    assert.ok(idx(k) !== -1 && idx(k) < idx("azul"), `${k} must rank over azul`);
+  }
 });
 
 test("jerseys: priority pick per stage + stable default kit", () => {
