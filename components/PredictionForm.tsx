@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { Check, Loader2 } from "lucide-react";
 
 import type { Match, Prediction, Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
+
+type FormStatus = "idle" | "pending" | "success" | "error";
 
 function TeamScoreField({
   team,
@@ -69,8 +72,70 @@ export function PredictionForm({
   jokerMultiplier: number;
   action: (formData: FormData) => Promise<void>;
 }) {
+  const [status, setStatus] = React.useState<FormStatus>("idle");
+  const [errorMessage, setErrorMessage] = React.useState("");
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the auto-reset timer when the component unmounts.
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // Guard against accidental double-submit while in flight.
+    if (status === "pending") return;
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+
+    setStatus("pending");
+    setErrorMessage("");
+
+    const formData = new FormData(e.currentTarget);
+
+    action(formData)
+      .then(() => {
+        setStatus("success");
+        timerRef.current = setTimeout(() => setStatus("idle"), 2000);
+      })
+      .catch((err: unknown) => {
+        setStatus("error");
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : "Error al guardar. Inténtalo de nuevo."
+        );
+      });
+  }
+
+  const isDisabled = locked || status === "pending";
+
+  let buttonContent: React.ReactNode;
+  if (status === "pending") {
+    buttonContent = (
+      <>
+        <Loader2 className="animate-spin" />
+        Guardando…
+      </>
+    );
+  } else if (status === "success") {
+    buttonContent = (
+      <>
+        <Check />
+        ¡Guardado!
+      </>
+    );
+  } else if (locked) {
+    buttonContent = "Locked";
+  } else if (prediction) {
+    buttonContent = "Update prediction";
+  } else {
+    buttonContent = "Submit prediction";
+  }
+
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <input type="hidden" name="match_id" value={match.id} />
 
       {match.is_joker && (
@@ -120,12 +185,26 @@ export function PredictionForm({
         />
       </div>
 
-      <Button type="submit" disabled={locked} className="w-full" size="lg">
-        {locked
-          ? "Locked"
-          : prediction
-            ? "Update prediction"
-            : "Submit prediction"}
+      {status === "error" && errorMessage && (
+        <p
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"
+          role="alert"
+        >
+          {errorMessage}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        disabled={isDisabled}
+        className={cn(
+          "w-full duration-300",
+          status === "success" &&
+            "bg-emerald-500 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+        )}
+        size="lg"
+      >
+        {buttonContent}
       </Button>
     </form>
   );

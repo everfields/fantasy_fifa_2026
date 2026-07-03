@@ -170,17 +170,17 @@ export default async function MatchDetailPage({
                 )}
               </div>
 
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
                 <TeamSide team={home} fallback="Local" align="end" />
                 <div className="text-center">
                   {match.home_score !== null && match.away_score !== null ? (
-                    <div className="font-mono text-5xl font-black tabular-nums">
+                    <div className="font-mono text-4xl font-black tabular-nums sm:text-5xl">
                       {match.home_score}
                       <span className="mx-2 text-muted-foreground">-</span>
                       {match.away_score}
                     </div>
                   ) : (
-                    <div className="font-mono text-3xl font-black text-muted-foreground">
+                    <div className="font-mono text-2xl font-black text-muted-foreground sm:text-3xl">
                       vs
                     </div>
                   )}
@@ -305,20 +305,22 @@ function TeamSide({
 }) {
   return (
     <div
-      className={`flex items-center gap-3 ${
-        align === "end" ? "flex-row-reverse text-right" : "text-left"
+      className={`flex min-w-0 flex-col items-center gap-2 text-center sm:flex-row sm:gap-3 ${
+        align === "end"
+          ? "sm:flex-row-reverse sm:text-right"
+          : "sm:text-left"
       }`}
     >
-      <span className="text-3xl">{team?.flag_url ? "" : "🏳️"}</span>
+      {!team?.flag_url && <span className="text-3xl">🏳️</span>}
       {team?.flag_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={team.flag_url}
           alt=""
-          className="h-8 w-12 rounded object-cover shadow-sm"
+          className="h-8 w-12 shrink-0 rounded object-cover shadow-sm"
         />
       )}
-      <span className="text-lg font-black leading-tight">
+      <span className="min-w-0 break-words text-sm font-black leading-tight sm:text-lg">
         {teamName(team, fallback)}
       </span>
     </div>
