@@ -238,19 +238,28 @@ export function Ciclista({
           {!aston && pose !== "lengua" && (
             <path d="M64.5 23.2 Q66 24.4 67.6 23.2" fill="none" stroke="#111827" strokeWidth="0.9" strokeLinecap="round" />
           )}
-          {/* tongue out (rezagados) */}
+          {/* tongue out (rezagados) — big, floppy, unmistakable */}
           {pose === "lengua" && !aston && (
-            <g transform="translate(66.8 23)">
-              <ellipse
-                cx="2.4"
-                cy="1.4"
-                rx="2.4"
-                ry="1.6"
-                fill="#f472b6"
-                stroke="#be185d"
-                strokeWidth="0.6"
-                className={loop(styles.wag)}
-              />
+            <g transform="translate(66.6 22.6)">
+              {/* open mouth behind it */}
+              <circle cx="0.4" cy="0.6" r="1.7" fill="#7f1d1d" />
+              <g className={loop(styles.wag)}>
+                <path
+                  d="M0 0 Q4.6 -0.6 6.4 1.8 Q7.6 3.6 6 4.9 Q4 6.4 1.8 4.6 Q0 3 0 0 Z"
+                  fill="#f472b6"
+                  stroke="#be185d"
+                  strokeWidth="0.7"
+                />
+                <line
+                  x1="2.2"
+                  y1="1.2"
+                  x2="4.6"
+                  y2="3.4"
+                  stroke="#be185d"
+                  strokeWidth="0.6"
+                  strokeLinecap="round"
+                />
+              </g>
             </g>
           )}
         </g>

@@ -24,10 +24,10 @@
 @keyframes wag {
   0%,
   100% {
-    transform: rotate(-6deg);
+    transform: rotate(-10deg);
   }
   50% {
-    transform: rotate(14deg);
+    transform: rotate(22deg);
   }
 }
 

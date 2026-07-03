@@ -7,19 +7,11 @@ import type { MaillotKey } from "@/lib/types";
  * `components/MaillotBadge.tsx` (the canonical jersey badge) at rider scale —
  * kept as a separate module so the badge stays untouched.
  *
- * Default kits (riders with no maillot) use the same 8-color palette as
- * PointsChart, indexed by `EtapaRider.kit` (0..7, deterministic per user).
+ * Riders with no maillot all wear the SAME light-grey kit: any color would
+ * collide with a jersey's meaning (green = regularidad, red = farolillo…).
+ * Identity comes from the name chip, not the kit.
  */
-export const KIT_COLORS = [
-  "hsl(142.1 76.2% 36.3%)", // primary green
-  "hsl(221 83% 53%)", // blue
-  "hsl(25 95% 53%)", // orange
-  "hsl(330 81% 60%)", // pink
-  "hsl(262 83% 58%)", // violet
-  "hsl(48 96% 53%)", // amber
-  "hsl(173 80% 40%)", // teal
-  "hsl(0 84% 60%)", // red
-] as const;
+const DEFAULT_KIT = "#d4d4d8"; // zinc-300 — reads as "gregario" in both themes
 
 const FLAT_FILLS: Partial<Record<MaillotKey, string>> = {
   amarillo: "#fbbf24",
@@ -29,13 +21,13 @@ const FLAT_FILLS: Partial<Record<MaillotKey, string>> = {
   azul: "#3b82f6",
 };
 
-/** Fill for a rider's torso: flat color, def reference, or default kit. */
+/** Fill for a rider's torso: flat color, def reference, or the grey kit. */
 export function jerseyFill(
   jersey: MaillotKey | null,
-  kit: number,
+  _kit: number,
   prefix: string,
 ): string {
-  if (jersey === null) return KIT_COLORS[Math.abs(kit) % KIT_COLORS.length];
+  if (jersey === null) return DEFAULT_KIT;
   return FLAT_FILLS[jersey] ?? `url(#${prefix}-fill)`;
 }
 
