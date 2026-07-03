@@ -24,3 +24,11 @@ export { computeMontana, pickMontanaStages } from "./montana";
 export type { PickableMatch } from "./montana";
 
 export { assignAstons, assignMaillots, sortGeneral } from "./maillots";
+
+export {
+  buildEtapaTimeline,
+  kitIndex,
+  KIT_PALETTE_SIZE,
+  MAILLOT_PRIORITY,
+} from "./etapa";
+export type { EtapaTimelineInput } from "./etapa";

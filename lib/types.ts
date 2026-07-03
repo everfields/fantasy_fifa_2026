@@ -206,6 +206,83 @@ export interface PelotonGroup {
   gapToLeader: number; // points from this group's best to the overall leader
 }
 
+// ----------------------------------------------------------------------------
+// "La Etapa" — animated race replay of the general classification.
+// One EtapaStage per jornada (calendar day) with >= 1 finished match, rebuilt
+// deterministically from the scored ledger (predictions / round_awards /
+// bonus_answers / point_adjustments) by lib/classifications/etapa.ts.
+// See docs/decisions/0024-etapa-animada.md.
+// ----------------------------------------------------------------------------
+
+/** How a rider is drawn in the etapa scene. */
+export type EtapaPose = "normal" | "crono" | "lengua";
+
+/** One rider placed in the etapa scene at a given stage. */
+export interface EtapaRider {
+  user_id: string;
+  display_name: string;
+  position: number; // 1-based place in the general at this stage
+  total_points: number;
+  x: number; // 0..100 along the road; higher = closer to the finish line
+  lane: number; // 0..2 vertical slot within the group formation
+  group: PelotonGroupKey;
+  jersey: MaillotKey | null; // primary jersey worn; null → default kit
+  kit: number; // 0..7 deterministic palette index for the default kit
+  maillots: MaillotKey[]; // every jersey held at this stage
+  pose: EtapaPose; // crono = leader tuck; lengua = rezagados tongue-out
+  aston: boolean; // shadowed by the safety car → F1 helmet
+  farolillo: boolean; // carries the red lantern (last of the general)
+}
+
+/** Compact per-group info for scene banners (front → back order). */
+export interface EtapaGroupInfo {
+  key: PelotonGroupKey;
+  size: number;
+  gapToLeader: number;
+}
+
+/** One position change vs the previous stage (animated as an overtake). */
+export interface EtapaOvertake {
+  user_id: string;
+  display_name: string;
+  from: number; // previous position (1-based)
+  to: number; // new position (to < from)
+  gained: number; // from - to
+}
+
+/** A finished match of the stage's jornada, for the results ticker. */
+export interface EtapaMatchResult {
+  id: string;
+  label: string; // "GER 1-1 PAR" (FIFA codes)
+  is_joker: boolean;
+  montana: boolean;
+}
+
+/** A rider who gained notable points in this stage (ticker highlight). */
+export interface EtapaHighlight {
+  user_id: string;
+  display_name: string;
+  points: number; // points gained in this stage
+  exacts: number; // exact hits gained in this stage
+}
+
+/** The full race state at one jornada, plus the diff vs the previous one. */
+export interface EtapaStage {
+  key: string; // jornada UTC date (YYYY-MM-DD), same derivation as matchdayKey
+  index: number; // 1-based etapa number
+  montana: boolean; // the jornada includes a montaña match
+  matches: EtapaMatchResult[];
+  highlights: EtapaHighlight[];
+  riders: EtapaRider[]; // position order (leader first)
+  groups: EtapaGroupInfo[]; // front → back
+  overtakes: EtapaOvertake[]; // vs previous stage; [] on the first stage
+}
+
+/** Chronological list of stages — the whole race, replayable. */
+export interface EtapaTimeline {
+  stages: EtapaStage[];
+}
+
 /**
  * Regularity (maillot verde): counts HOW OFTEN a player scores, not how much.
  * Every scoring event is worth exactly 1 hit — an exact scoreline counts the

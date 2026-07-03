@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { selectAll } from "@/lib/supabase/paginate";
 import type {
   BonusAnswer,
@@ -43,7 +44,7 @@ import {
 } from "@/lib/classifications/config";
 
 import { AppShell } from "../_components/shell";
-import { getAppSettings, matchdayKey } from "../_lib/data";
+import { getAppSettings, loadEmailMap, matchdayKey } from "../_lib/data";
 
 export const metadata = { title: "Clasificación · Resiporra 26" };
 export const dynamic = "force-dynamic";
@@ -194,29 +195,6 @@ function buildLiveRound(
   };
 }
 
-/**
- * Resolve player emails server-side via the privileged `profile_emails()` RPC,
- * needed to assign the fixed maillots (arcoíris champion + blanco roster) and
- * to filter the "Jóvenes" tab. Emails are PII: they NEVER reach client-component
- * props or the rendered HTML — they are only used here to derive opaque
- * user_id → MaillotKey[] maps. Degrades to `{}` (no fixed maillots, hidden
- * Jóvenes tab) if the RPC/migration is not yet available.
- */
-async function loadEmailMap(): Promise<Record<string, string>> {
-  try {
-    const svc = createServiceClient();
-    const { data, error } = await svc.rpc("profile_emails");
-    if (error || !data) return {};
-    const map: Record<string, string> = {};
-    for (const row of data as { id: string; email: string }[]) {
-      if (row?.id && row?.email) map[row.id] = row.email.toLowerCase();
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
-
 export default async function StandingsPage() {
   const profile = await requireUser();
   const supabase = createClient();
@@ -344,9 +322,17 @@ export default async function StandingsPage() {
   return (
     <AppShell profile={profile}>
       <div className="space-y-4 sm:space-y-6">
-        <h1 className="hidden text-2xl font-black tracking-tight sm:block sm:text-4xl">
-          Clasificación
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="hidden text-2xl font-black tracking-tight sm:block sm:text-4xl">
+            Clasificación
+          </h1>
+          <Link
+            href="/standings/etapa"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            🚴 Ver la etapa
+          </Link>
+        </div>
 
         <Tabs defaultValue="general">
           {/* Swipeable single row on phones (scrollbar hidden), inline on sm+. */}

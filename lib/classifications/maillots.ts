@@ -75,7 +75,7 @@ export function assignMaillots(input: {
   montana: MontanaRow[];
   emailByUserId: Record<string, string>;
   createdAt: Record<string, string>;
-  roundAwards?: RoundAward[];
+  roundAwards?: Pick<RoundAward, "round_key" | "user_id" | "round_points">[];
 }): Record<string, MaillotKey[]> {
   const {
     standings,

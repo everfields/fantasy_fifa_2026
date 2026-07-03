@@ -8,8 +8,31 @@
 // ============================================================================
 
 import { potBreakdown, type PotBreakdown } from "@/lib/pot";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { DEFAULT_APP_SETTINGS, type AppSettings, type Team } from "@/lib/types";
+
+/**
+ * Resolve player emails server-side via the privileged `profile_emails()` RPC,
+ * needed to assign the fixed maillots (arcoíris champion + blanco roster) and
+ * to filter the "Jóvenes" tab. Emails are PII: they NEVER reach client-component
+ * props or the rendered HTML — they are only used to derive opaque
+ * user_id → MaillotKey[] maps. Degrades to `{}` (no fixed maillots, hidden
+ * Jóvenes tab) if the RPC/migration is not yet available.
+ */
+export async function loadEmailMap(): Promise<Record<string, string>> {
+  try {
+    const svc = createServiceClient();
+    const { data, error } = await svc.rpc("profile_emails");
+    if (error || !data) return {};
+    const map: Record<string, string> = {};
+    for (const row of data as { id: string; email: string }[]) {
+      if (row?.id && row?.email) map[row.id] = row.email.toLowerCase();
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
 
 /** Load the single `app_settings` row, falling back to defaults if absent. */
 export async function getAppSettings(): Promise<AppSettings> {

@@ -34,7 +34,7 @@ on a live-updating leaderboard. An admin dashboard controls scoring rules, joker
 - `lib/tournament` — pure group-standings + best-thirds (FIFA criteria) for `/mundial` + pure bracket resolution (`bracket.ts`: `matchOutcome`/`resolveSlot`); bracket renders from `matches` rows — no LLM (ADR-0011). **Knockout slots auto-propagate** (ADR-0022): the admin declares the bracket once (`matches.home_source`/`away_source` + `home/away_source_kind` `winner|loser`; «Cruce» editor in `/admin/matches`) and `propagateKnockoutBracket` (`app/api/_lib.ts`) fills the next round's `home_team`/`away_team` in place when a match finishes (cron, «Sync ahora», `saveResult`, `saveSources`) — idempotent, audited, only touches `scheduled` dependents, never clears a slot. Draws need `matches.penalty_winner` (admin sets it in the result editor) or propagation skips. `saveTeams` remains the manual override.
 - `lib/tracker` — "Luis de la Tracker": `analysis.ts` (pure), `persona.ts`, `luis.ts` (LLM), `brand.ts`
 - `lib/auth` — role guards
-- `components/` — `ui/` (shadcn), `MatchCard`, `PredictionForm`, `RankingTable`, `PointsChart`, `Countdown`, `LuisTracker`, `admin/*`
+- `components/` — `ui/` (shadcn), `MatchCard`, `PredictionForm`, `RankingTable`, `PointsChart`, `Countdown`, `LuisTracker`, `admin/*`, `etapa/*` (replay animado — ADR-0024)
 - `db/migrations` — schema + RLS + triggers; `db/seed` — teams + WC2026 calendar
 
 ## Scoring (defaults, all in `app_settings`) — see `docs/decisions/0001-scoring-overhaul.md`
@@ -107,7 +107,13 @@ el farolillo rojo. Las clasificaciones derivadas se computan en
 render desde datos puntuados — sin recalc nuevo. **UI de clasificaciones (ADR-0016):**
 terminología «corredor» (nunca «jugador» fuera del admin); `RankBadge`/`initials` compartidos en
 `components/classifications.tsx` y chrome unificado entre tableros; en móvil `/standings` no
-muestra h1 ni botón Bote — los premios del bote viven en `/rules`.
+muestra h1 ni botón Bote — los premios del bote viven en `/rules`. **«La Etapa» (ADR-0024):**
+`/standings/etapa` (botón «🚴 Ver la etapa») reproduce la vuelta como escena animada con timeline
+por jornadas — `buildEtapaTimeline` (`lib/classifications/etapa.ts`, puro) reconstruye cada etapa
+del ledger (predicciones→jornada del kickoff, awards→cierre de ronda, bonus→`locks_at`,
+ajustes→`created_at`; la última etapa cuadra SIEMPRE con la general actual); animación presetada
+(CSS keyframes + `motion` aislado en la ruta), un solo personaje cartoon (identidad = maillot +
+nombre), cero LLM y cero migraciones. Nunca entra un partido no `finished` en el timeline.
 
 ## Luis de la Tracker (AI tracker) — see `docs/decisions/0003-luis-de-la-tracker.md`
 Daily AI "parte" parodying Spain coach Luis de la Fuente (seco, chulesco, sobrado). Pipeline:
