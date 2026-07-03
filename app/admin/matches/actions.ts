@@ -10,6 +10,7 @@ import type { Match } from "@/lib/types";
 import { adminActor, writeAudit } from "../_lib";
 import {
   loadAppSettings,
+  propagateKnockoutBracket,
   rescoreMatches,
   settleRoundAwardsAndRefresh,
 } from "@/app/api/_lib";
@@ -22,6 +23,8 @@ const resultSchema = z
     home_score: z.coerce.number().int().min(0).max(99),
     away_score: z.coerce.number().int().min(0).max(99),
     status: z.enum(["scheduled", "live", "finished"]),
+    // Shootout winner for a level knockout match; null when not applicable.
+    penalty_winner: z.string().uuid().nullable(),
   })
   .strict();
 
@@ -47,19 +50,41 @@ export async function saveResult(
     home_score: form.get("home_score"),
     away_score: form.get("away_score"),
     status: form.get("status"),
+    penalty_winner: (form.get("penalty_winner") as string) || null,
   });
   if (!parsed.success) {
     return { ok: false, message: "Datos inválidos. Revisa el marcador y el estado." };
   }
 
-  const { match_id, home_score, away_score, status } = parsed.data;
+  const { match_id, home_score, away_score, status, penalty_winner } =
+    parsed.data;
   const before = await loadMatch(match_id);
   if (!before) return { ok: false, message: "Partido no encontrado." };
+
+  // Penalty winner only applies to knockout matches and must name one of the
+  // two teams of THIS match. Group matches always store null.
+  if (penalty_winner !== null) {
+    if (before.stage === "group") {
+      return {
+        ok: false,
+        message: "Solo los partidos eliminatorios tienen ganador en penaltis.",
+      };
+    }
+    if (
+      penalty_winner !== before.home_team &&
+      penalty_winner !== before.away_team
+    ) {
+      return {
+        ok: false,
+        message: "El ganador en penaltis debe ser uno de los dos equipos.",
+      };
+    }
+  }
 
   const supabase = createServiceClient();
   const { error } = await supabase
     .from("matches")
-    .update({ home_score, away_score, status })
+    .update({ home_score, away_score, status, penalty_winner })
     .eq("id", match_id);
 
   if (error) return { ok: false, message: `Error: ${error.message}` };
@@ -76,6 +101,15 @@ export async function saveResult(
     rescore.rescored,
   );
 
+  // When this match is now finished, auto-fill any knockout slot fed by it
+  // (admin-configured home_source/away_source links). Idempotent — only slots
+  // whose resolved team changed are written by the propagation helper.
+  let propagated: string[] = [];
+  if (status === "finished") {
+    const prop = await propagateKnockoutBracket([match_id]);
+    propagated = prop.updatedMatchIds;
+  }
+
   await writeAudit({
     actor,
     action: "override_match_result",
@@ -85,19 +119,26 @@ export async function saveResult(
       home_score: before.home_score,
       away_score: before.away_score,
       status: before.status,
+      penalty_winner: before.penalty_winner,
     },
     after: {
       home_score,
       away_score,
       status,
+      penalty_winner,
       rescored: rescore.rescored,
       roundAwardsAffected: awards.awardsAffected,
+      propagatedMatchIds: propagated,
     },
   });
 
   revalidatePath("/admin/matches");
   revalidatePath("/standings");
   revalidatePath("/dashboard");
+  if (propagated.length > 0) {
+    revalidatePath("/mundial");
+    revalidatePath("/matches");
+  }
   const metaNote =
     awards.awardsAffected > 0
       ? ` Meta volante actualizada (${awards.awardsAffected} premios).`
@@ -298,6 +339,113 @@ export async function saveTeams(
   revalidatePath("/matches");
   revalidatePath("/dashboard");
   return { ok: true, message: "Equipos asignados al cruce." };
+}
+
+const sourcesSchema = z
+  .object({
+    match_id: z.string().min(1),
+    home_source: z.string().uuid().nullable(),
+    away_source: z.string().uuid().nullable(),
+    home_source_kind: z.enum(["winner", "loser"]),
+    away_source_kind: z.enum(["winner", "loser"]),
+  })
+  .strict();
+
+/**
+ * Configure a knockout match's bracket sources: which earlier knockout match's
+ * outcome (its winner, or its loser for the third-place match) fills each slot.
+ * Stores home_source/away_source + *_source_kind — NEVER touches the resolved
+ * home_team/away_team (that is done by propagation once the source finishes).
+ * Passing null clears a link only. UPDATE in place + audit, like saveTeams.
+ */
+export async function saveSources(
+  _prev: MatchActionState,
+  form: FormData,
+): Promise<MatchActionState> {
+  const actor = await adminActor();
+
+  const parsed = sourcesSchema.safeParse({
+    match_id: form.get("match_id"),
+    home_source: (form.get("home_source") as string) || null,
+    away_source: (form.get("away_source") as string) || null,
+    home_source_kind: form.get("home_source_kind") ?? "winner",
+    away_source_kind: form.get("away_source_kind") ?? "winner",
+  });
+  if (!parsed.success) return { ok: false, message: "Cruce inválido." };
+
+  const {
+    match_id,
+    home_source,
+    away_source,
+    home_source_kind,
+    away_source_kind,
+  } = parsed.data;
+
+  const before = await loadMatch(match_id);
+  if (!before) return { ok: false, message: "Partido no encontrado." };
+  if (before.stage === "group") {
+    return { ok: false, message: "Los partidos de grupos no tienen cruce." };
+  }
+
+  // Each configured source must be a DIFFERENT knockout match.
+  for (const src of [home_source, away_source]) {
+    if (src === null) continue;
+    if (src === match_id) {
+      return { ok: false, message: "Un partido no puede alimentarse de sí mismo." };
+    }
+    const srcMatch = await loadMatch(src);
+    if (!srcMatch) return { ok: false, message: "Partido de origen no encontrado." };
+    if (srcMatch.stage === "group") {
+      return {
+        ok: false,
+        message: "El origen de un cruce debe ser otro partido eliminatorio.",
+      };
+    }
+  }
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("matches")
+    .update({ home_source, away_source, home_source_kind, away_source_kind })
+    .eq("id", match_id);
+
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  await writeAudit({
+    actor,
+    action: "set_match_sources",
+    target_type: "match",
+    target_id: match_id,
+    before: {
+      home_source: before.home_source,
+      away_source: before.away_source,
+      home_source_kind: before.home_source_kind,
+      away_source_kind: before.away_source_kind,
+    },
+    after: { home_source, away_source, home_source_kind, away_source_kind },
+  });
+
+  // If a configured source match already finished, fill this slot immediately.
+  const sources = [home_source, away_source].filter(
+    (s): s is string => s !== null,
+  );
+  let propagated: string[] = [];
+  if (sources.length > 0) {
+    const prop = await propagateKnockoutBracket(sources);
+    propagated = prop.updatedMatchIds;
+  }
+
+  revalidatePath("/admin/matches");
+  revalidatePath("/mundial");
+  revalidatePath("/matches");
+  revalidatePath("/dashboard");
+  return {
+    ok: true,
+    message:
+      propagated.length > 0
+        ? "Cruce configurado y equipos propagados."
+        : "Cruce configurado.",
+  };
 }
 
 const syncSchema = z.object({ match_id: z.string().min(1) }).strict();

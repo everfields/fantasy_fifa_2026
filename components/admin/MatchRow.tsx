@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useFormState } from "react-dom";
 
-import type { Match, MatchStatus, Team } from "@/lib/types";
+import type { Match, MatchStatus, Stage, Team } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import {
   saveJoker,
   saveLocksAt,
   saveResult,
+  saveSources,
   saveTeams,
   syncNow,
   type MatchActionState,
@@ -31,6 +33,40 @@ import { setMontanaStage } from "@/app/admin/matches/montana-actions";
 const MONTANA_STAGES = [1, 2, 3, 4, 5, 6, 7] as const;
 
 const initial: MatchActionState = { ok: false, message: "" };
+
+/** Terse stage labels for the bracket-source picker. */
+const SHORT_STAGE: Record<Stage, string> = {
+  group: "Grupos",
+  round_of_32: "R32",
+  round_of_16: "R16",
+  quarter: "QF",
+  semi: "SF",
+  third_place: "3º",
+  final: "Final",
+};
+
+/**
+ * Lean knockout-match descriptor for the "Cruce" source picker. Built server-
+ * side in the admin matches page (team names already resolved, «Por definir»
+ * when a slot is still empty).
+ */
+export type KnockoutOption = {
+  id: string;
+  stage: Stage;
+  kickoff_at: string;
+  home: string;
+  away: string;
+};
+
+function sourceLabel(o: KnockoutOption): string {
+  const when = new Date(o.kickoff_at).toLocaleString("es-ES", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${SHORT_STAGE[o.stage]} · ${when} — ${o.home} vs ${o.away}`;
+}
 
 const STATUS_META: Record<MatchStatus, { label: string; variant: "secondary" | "default" | "outline" }> = {
   scheduled: { label: "Programado", variant: "outline" },
@@ -56,11 +92,13 @@ export function MatchRow({
   home,
   away,
   teams,
+  knockoutOptions,
 }: {
   match: Match;
   home: Team;
   away: Team;
   teams: Team[];
+  knockoutOptions: KnockoutOption[];
 }) {
   const meta = STATUS_META[match.status];
 
@@ -101,7 +139,13 @@ export function MatchRow({
         </div>
       </td>
       <td className="py-3 text-right">
-        <EditDialog match={match} home={home} away={away} teams={teams} />
+        <EditDialog
+          match={match}
+          home={home}
+          away={away}
+          teams={teams}
+          knockoutOptions={knockoutOptions}
+        />
       </td>
     </tr>
   );
@@ -112,11 +156,13 @@ function EditDialog({
   home,
   away,
   teams,
+  knockoutOptions,
 }: {
   match: Match;
   home: Team;
   away: Team;
   teams: Team[];
+  knockoutOptions: KnockoutOption[];
 }) {
   const [resState, resAction] = useFormState(saveResult, initial);
   const [lockState, lockAction] = useFormState(saveLocksAt, initial);
@@ -124,6 +170,22 @@ function EditDialog({
   const [montanaState, montanaAction] = useFormState(setMontanaStage, initial);
   const [syncState, syncAction] = useFormState(syncNow, initial);
   const [teamsState, teamsAction] = useFormState(saveTeams, initial);
+  const [sourcesState, sourcesAction] = useFormState(saveSources, initial);
+
+  // Track the score inputs so the penalty-winner selector only shows when the
+  // knockout match is level (a shootout only exists on a tie).
+  const [homeScore, setHomeScore] = useState<string>(
+    String(match.home_score ?? 0),
+  );
+  const [awayScore, setAwayScore] = useState<string>(
+    String(match.away_score ?? 0),
+  );
+  const isKnockout = match.stage !== "group";
+  const level =
+    homeScore !== "" &&
+    awayScore !== "" &&
+    Number(homeScore) === Number(awayScore);
+  const candidates = knockoutOptions.filter((o) => o.id !== match.id);
 
   return (
     <Dialog>
@@ -171,6 +233,43 @@ function EditDialog({
           </form>
         ) : null}
 
+        {/* Bracket source (cruce) — which earlier match's outcome fills each slot */}
+        {isKnockout ? (
+          <form
+            action={sourcesAction}
+            className="space-y-3 border-b border-border pb-5"
+          >
+            <input type="hidden" name="match_id" value={match.id} />
+            <Label>Cruce (origen de los equipos)</Label>
+            <div className="space-y-2">
+              <SourceSlot
+                side="Local"
+                sourceName="home_source"
+                kindName="home_source_kind"
+                currentSource={match.home_source}
+                currentKind={match.home_source_kind}
+                options={candidates}
+              />
+              <SourceSlot
+                side="Visitante"
+                sourceName="away_source"
+                kindName="away_source_kind"
+                currentSource={match.away_source}
+                currentKind={match.away_source_kind}
+                options={candidates}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Al finalizar el partido de origen, el equipo se rellena
+              automáticamente (ganador, o perdedor para el 3º puesto).
+            </p>
+            <SubmitButton size="sm" variant="outline">
+              Guardar cruce
+            </SubmitButton>
+            {sourcesState.message ? <Message state={sourcesState} /> : null}
+          </form>
+        ) : null}
+
         {/* Result + status */}
         <form action={resAction} className="space-y-4 border-b border-border pb-5">
           <input type="hidden" name="match_id" value={match.id} />
@@ -182,7 +281,8 @@ function EditDialog({
                 name="home_score"
                 type="number"
                 min={0}
-                defaultValue={match.home_score ?? 0}
+                value={homeScore}
+                onChange={(e) => setHomeScore(e.target.value)}
                 className="w-20 text-center font-mono"
               />
             </div>
@@ -194,7 +294,8 @@ function EditDialog({
                 name="away_score"
                 type="number"
                 min={0}
-                defaultValue={match.away_score ?? 0}
+                value={awayScore}
+                onChange={(e) => setAwayScore(e.target.value)}
                 className="w-20 text-center font-mono"
               />
             </div>
@@ -212,6 +313,29 @@ function EditDialog({
               </select>
             </div>
           </div>
+          {/* Shootout winner: only for a level knockout match; otherwise submit
+              null so a previously-recorded winner is cleared. */}
+          {isKnockout && level ? (
+            <div className="space-y-1.5">
+              <Label htmlFor={`pen-${match.id}`}>Ganador en penaltis</Label>
+              <select
+                id={`pen-${match.id}`}
+                name="penalty_winner"
+                defaultValue={match.penalty_winner ?? ""}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Sin definir</option>
+                {match.home_team ? (
+                  <option value={match.home_team}>{home.name}</option>
+                ) : null}
+                {match.away_team ? (
+                  <option value={match.away_team}>{away.name}</option>
+                ) : null}
+              </select>
+            </div>
+          ) : (
+            <input type="hidden" name="penalty_winner" value="" />
+          )}
           {resState.message ? (
             <Message state={resState} />
           ) : null}
@@ -351,6 +475,50 @@ function TeamSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+function SourceSlot({
+  side,
+  sourceName,
+  kindName,
+  currentSource,
+  currentKind,
+  options,
+}: {
+  side: string;
+  sourceName: string;
+  kindName: string;
+  currentSource: string | null;
+  currentKind: "winner" | "loser";
+  options: KnockoutOption[];
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-20 shrink-0 text-xs text-muted-foreground">{side}</span>
+      <select
+        name={kindName}
+        defaultValue={currentKind}
+        className="h-9 shrink-0 rounded-md border border-input bg-background px-2 text-sm"
+        aria-label={`${side}: ganador o perdedor`}
+      >
+        <option value="winner">Ganador de</option>
+        <option value="loser">Perdedor de</option>
+      </select>
+      <select
+        name={sourceName}
+        defaultValue={currentSource ?? ""}
+        className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+        aria-label={`${side}: partido de origen`}
+      >
+        <option value="">Sin origen</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {sourceLabel(o)}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 

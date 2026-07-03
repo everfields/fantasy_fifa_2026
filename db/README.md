@@ -67,6 +67,10 @@ db/
                                profile_emails() service-role-only email resolver (ADR-0014)
     0011_meta_volante_distribution.sql seeds app_settings meta_volante_distribution
                                ([100,50,50,20,20,20,20], only if absent) — ADR-0015
+    0012_fix_bonus_protect_trigger.sql recreates bonus_answers_protect_admin_cols()
+                               as security invoker so scored points_awarded persists (ADR-0020)
+    0013_bracket_sources.sql   matches.home_source/away_source (+ *_source_kind) knockout
+                               auto-propagation wiring + penalty_winner (shootout winner)
   seed/
     teams.csv            48 teams, groups A–L (PLACEHOLDER data — see warning below)
     matches.csv          72 group matches + 32 knockout placeholders (PLACEHOLDER)
@@ -79,7 +83,7 @@ db/
 Migrations are ordered and must be applied in sequence, then the seed:
 
 ```
-0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql  →  0009_standings_on_signup.sql  →  0010_cycling_classifications.sql  →  0011_meta_volante_distribution.sql
+0001_schema.sql  →  0002_rls.sql  →  0003_functions.sql  →  0004_scoring_overhaul.sql  →  0006_admin_tools.sql  →  seed/seed.sql  →  0007_bonus_categories.sql  →  0008_live_results_cron.sql  →  0009_standings_on_signup.sql  →  0010_cycling_classifications.sql  →  0011_meta_volante_distribution.sql  →  0012_fix_bonus_protect_trigger.sql  →  0013_bracket_sources.sql
 ```
 
 > **Note `0007` runs AFTER the seed.** It seeds Spain-scorer and tournament
@@ -376,6 +380,36 @@ data, fully idempotent.** Seeds `settings -> 'meta_volante_distribution'`
 distribution is never overwritten. No schema change: `round_awards` already
 supports several awardees per round via `unique (round_key, user_id)`.
 `meta_volante_points` stays in the blob (deprecated, mirrors position 1).
+
+### 0012_fix_bonus_protect_trigger.sql
+Recreates `bonus_answers_protect_admin_cols()` as `security invoker` (was
+`security definer`, which made `current_user` the function owner, never
+`service_role`, silently reverting every scored `bonus_answers.points_awarded`
+to null so bonus points never reached standings). Additive-only, idempotent,
+touches no player data (ADR-0020).
+
+### 0013_bracket_sources.sql
+Knockout auto-propagation wiring on `matches`. **Additive-only, touches no
+player data, fully idempotent.**
+- **`matches.home_source` / `matches.away_source`** (`uuid`, nullable, FK →
+  `matches(id) on delete set null`): the match feeding this slot.
+- **`matches.home_source_kind` / `matches.away_source_kind`** (`text not null
+  default 'winner'`, CHECK `in ('winner','loser')`): whether the winner or loser
+  of the source match advances into the slot.
+- **`matches.penalty_winner`** (`uuid`, nullable, FK → `teams(id) on delete set
+  null`): shootout winner when a knockout tie ends level; identifies the
+  advancing team. **No DB CHECK ties it to home_team/away_team** — during
+  backfill the winner may be set before the teams; the app validates it.
+- **Named CHECK `matches_bracket_knockout_only`** (added behind `drop constraint
+  if exists`): sources and `penalty_winner` are knockout-only — a `group`-stage
+  match may not wire a bracket source or a shootout winner.
+- Propagation code (app, `lib/tournament` / admin) updates `home_team` /
+  `away_team` IN PLACE when a source match finishes — never delete+reinsert
+  (predictions cascade off `matches`).
+- **RLS:** rides the existing `matches` policies unchanged (public-read to
+  authenticated, admin-only writes via `matches_admin_write`; service role /
+  SECURITY DEFINER bypasses RLS). RLS is row-level, not column-level — no new
+  policy needed.
 
 ## Seed data — PLACEHOLDER WARNING
 

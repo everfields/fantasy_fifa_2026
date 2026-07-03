@@ -31,6 +31,11 @@ function match(
     locks_at: "2026-06-11T19:00:00Z",
     is_joker: false,
     montana_stage: null,
+    home_source: null,
+    away_source: null,
+    home_source_kind: "winner",
+    away_source_kind: "winner",
+    penalty_winner: null,
     provider_match_id: null,
     ...overrides,
   };

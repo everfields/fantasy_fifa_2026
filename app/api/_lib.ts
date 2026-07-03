@@ -24,6 +24,9 @@ import type {
 } from "@/lib/scoring";
 import type { ProviderMatch } from "@/lib/providers";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
+import { resolveSlot, type BracketSource } from "@/lib/tournament";
+import { createServiceClient } from "@/lib/supabase/server";
 import { selectAll } from "@/lib/supabase/paginate";
 import {
   AppSettings,
@@ -784,4 +787,154 @@ export async function settleRoundAwardsAndRefresh(
     await refreshStandings(supabase);
   }
   return awards;
+}
+
+// ----------------------------------------------------------------------------
+// Knockout bracket propagation — auto-fill downstream slots when a source
+// match finishes (ADR: bracket sources, migration 0013)
+// ----------------------------------------------------------------------------
+
+/** Minimal `matches` shape for a downstream match whose slots may be filled. */
+interface DependentMatchRow {
+  id: string;
+  status: MatchStatus;
+  home_team: string | null;
+  away_team: string | null;
+  home_source: string | null;
+  away_source: string | null;
+  home_source_kind: "winner" | "loser";
+  away_source_kind: "winner" | "loser";
+}
+
+/**
+ * Propagate finished knockout results into the next round's team slots.
+ *
+ * A match declares `home_source`/`away_source` = the id of the match whose
+ * winner (or, for the third-place match, loser — `*_source_kind`) fills that
+ * slot. When a source match finishes we resolve each dependent's slot via the
+ * pure `resolveSlot` (lib/tournament) and UPDATE the team in place.
+ *
+ * IDEMPOTENT + SAFE:
+ *  - Empty input → no-op.
+ *  - Only `finished` source matches are considered.
+ *  - Only dependents that are still `scheduled` are touched — never live or
+ *    finished rows (their predictions are locked/scored).
+ *  - A null resolution NEVER clears an existing (admin-set) team.
+ *  - A non-null resolution differing from the current value wins (so a result
+ *    correction re-propagates); an identical value writes nothing.
+ *  - Only home_team/away_team are updated in place — never delete + reinsert
+ *    (player-data safety rule 7; FK cascades would wipe predictions).
+ *
+ * Audit: a `propagate_bracket` entry per updated slot via the existing
+ * `logAudit` helper (log_audit RPC, service client, null actor for the cron).
+ */
+export async function propagateKnockoutBracket(
+  sourceMatchIds: string[],
+): Promise<{ updatedMatchIds: string[] }> {
+  const empty = { updatedMatchIds: [] as string[] };
+  if (sourceMatchIds.length === 0) return empty;
+
+  const supabase = createServiceClient();
+
+  // 1. Load the source matches; keep only the finished ones (the only ones
+  //    that can determine an outcome).
+  const { data: srcData, error: srcErr } = await supabase
+    .from("matches")
+    .select(
+      "id, status, home_team, away_team, home_score, away_score, penalty_winner",
+    )
+    .in("id", sourceMatchIds);
+  if (srcErr || !srcData) return empty;
+
+  const finishedSources = new Map<string, BracketSource>();
+  for (const m of srcData as Array<{ id: string } & BracketSource>) {
+    if (m.status === "finished") finishedSources.set(m.id, m);
+  }
+  if (finishedSources.size === 0) return empty;
+
+  const sourceIds = Array.from(finishedSources.keys());
+  const inList = sourceIds.join(","); // UUIDs — no commas/parens to escape
+
+  // 2. Load dependents referencing any finished source on either slot.
+  //    `matches` is ~104 rows — no pagination concern.
+  const { data: depData, error: depErr } = await supabase
+    .from("matches")
+    .select(
+      "id, status, home_team, away_team, home_source, away_source, home_source_kind, away_source_kind",
+    )
+    .or(`home_source.in.(${inList}),away_source.in.(${inList})`);
+  if (depErr || !depData) return empty;
+
+  const updatedMatchIds: string[] = [];
+
+  for (const dep of depData as DependentMatchRow[]) {
+    // Never touch a live/finished match — its predictions are locked/scored.
+    if (dep.status !== "scheduled") continue;
+
+    const patch: { home_team?: string; away_team?: string } = {};
+    const auditSlots: Array<{
+      slot: "home" | "away";
+      sourceId: string;
+      teamId: string;
+    }> = [];
+
+    if (dep.home_source && finishedSources.has(dep.home_source)) {
+      const src = finishedSources.get(dep.home_source)!;
+      const resolved = resolveSlot(src, dep.home_source_kind);
+      // A null resolution never overwrites an existing team; an identical value
+      // writes nothing; a differing value wins (result correction re-propagates).
+      if (resolved && resolved !== dep.home_team) {
+        patch.home_team = resolved;
+        auditSlots.push({
+          slot: "home",
+          sourceId: dep.home_source,
+          teamId: resolved,
+        });
+      }
+    }
+
+    if (dep.away_source && finishedSources.has(dep.away_source)) {
+      const src = finishedSources.get(dep.away_source)!;
+      const resolved = resolveSlot(src, dep.away_source_kind);
+      if (resolved && resolved !== dep.away_team) {
+        patch.away_team = resolved;
+        auditSlots.push({
+          slot: "away",
+          sourceId: dep.away_source,
+          teamId: resolved,
+        });
+      }
+    }
+
+    if (Object.keys(patch).length === 0) continue;
+
+    // Re-assert the scheduled guard in the write to avoid racing a concurrent
+    // lock — only home_team/away_team are updated, in place.
+    const { error: updErr } = await supabase
+      .from("matches")
+      .update(patch)
+      .eq("id", dep.id)
+      .eq("status", "scheduled");
+    if (updErr) continue;
+
+    updatedMatchIds.push(dep.id);
+    for (const a of auditSlots) {
+      await logAudit(supabase, {
+        action: "propagate_bracket",
+        targetType: "match",
+        targetId: dep.id,
+        after: { source_match_id: a.sourceId, slot: a.slot, team_id: a.teamId },
+      });
+    }
+  }
+
+  // 3. Revalidate the same paths the existing finish flow revalidates.
+  if (updatedMatchIds.length > 0) {
+    revalidatePath("/mundial");
+    revalidatePath("/matches");
+    revalidatePath("/dashboard");
+    revalidatePath("/admin/matches");
+  }
+
+  return { updatedMatchIds };
 }

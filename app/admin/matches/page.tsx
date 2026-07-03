@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { MatchRow } from "@/components/admin/MatchRow";
+import { MatchRow, type KnockoutOption } from "@/components/admin/MatchRow";
 import { MontanaAutoAssign } from "@/components/admin/MontanaAutoAssign";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +52,19 @@ export default async function AdminMatchesPage() {
   const teamMap = new Map<string, Team>(teamList.map((t) => [t.id, t]));
 
   const all = (matches as Match[] | null) ?? [];
+
+  // Lean list of knockout matches for the "Cruce" (bracket source) picker in
+  // each row — team names resolved server-side, «Por definir» when still empty.
+  const knockoutOptions: KnockoutOption[] = all
+    .filter((m) => m.stage !== "group")
+    .map((m) => ({
+      id: m.id,
+      stage: m.stage,
+      kickoff_at: m.kickoff_at,
+      home: teamMap.get(m.home_team)?.name ?? "Por definir",
+      away: teamMap.get(m.away_team)?.name ?? "Por definir",
+    }));
+
   const jokerCount = all.filter((m) => m.is_joker).length;
   const montanaCount = all.filter((m) => m.montana_stage !== null).length;
   const montanaStages = new Set(
@@ -158,6 +171,7 @@ export default async function AdminMatchesPage() {
                         home={teamOr(teamMap, m.home_team)}
                         away={teamOr(teamMap, m.away_team)}
                         teams={teamList}
+                        knockoutOptions={knockoutOptions}
                       />
                     ))}
                   </tbody>

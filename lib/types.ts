@@ -17,6 +17,12 @@ export type Stage =
 export type BonusType = "single" | "multi" | "numeric" | "text";
 
 /**
+ * How a knockout slot is fed from its source match: by its winner (default)
+ * or by its loser (the third-place match takes the semi-final losers).
+ */
+export type SlotSourceKind = "winner" | "loser";
+
+/**
  * Visual grouping of bonus questions, shown as three blocks in /bonus and
  * /admin/bonus: group champions, first scorer in each Spain match, and
  * tournament-wide questions (default).
@@ -66,6 +72,11 @@ export interface Match {
   is_joker: boolean; // admin-designated joker match → ×joker_multiplier for ALL users
   montana_stage: number | null; // etapa de montaña (1..N) this match belongs to; null = not a montaña match. Mutually exclusive with is_joker (DB CHECK).
   provider_match_id: string | null; // id in the external football provider
+  home_source: string | null; // Match.id whose outcome fills home_team (knockout only, admin-configured)
+  away_source: string | null; // Match.id whose outcome fills away_team (knockout only, admin-configured)
+  home_source_kind: SlotSourceKind; // 'loser' feeds the third-place match from the semis
+  away_source_kind: SlotSourceKind;
+  penalty_winner: string | null; // Team.id — shootout winner when a knockout match ends level
 }
 
 export interface Prediction {
