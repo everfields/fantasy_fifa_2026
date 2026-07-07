@@ -194,7 +194,7 @@ function EditDialog({
           Editar
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[85dvh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {home.code} vs {away.code}

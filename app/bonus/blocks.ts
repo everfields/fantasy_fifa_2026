@@ -24,7 +24,7 @@ export const BLOCKS: {
   },
   {
     category: "spain_scorer",
-    title: "Primer goleador — partidos de España",
+    title: "Primer goleador",
     description: "Predice quién marca el primer gol en cada partido de España.",
   },
   {

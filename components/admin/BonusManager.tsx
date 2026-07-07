@@ -56,7 +56,7 @@ const TYPE_LABEL: Record<BonusType, string> = {
 /** The three visual blocks, in display order, with their section headings. */
 const CATEGORY_SECTIONS: { category: BonusCategory; label: string }[] = [
   { category: "group_winner", label: "Campeón de grupo" },
-  { category: "spain_scorer", label: "Primer goleador — partidos de España" },
+  { category: "spain_scorer", label: "Primer goleador" },
   { category: "tournament", label: "Preguntas del torneo" },
 ];
 
@@ -542,7 +542,7 @@ function EditQuestionDialog({ q }: { q: BonusQuestion }) {
           Editar
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-h-[85dvh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar pregunta</DialogTitle>
           <DialogDescription>{q.text}</DialogDescription>
