@@ -44,6 +44,7 @@ const BEAT_START = 1.1; // non-overtakers settle first
 const BEAT_LEN = 1.5; // one slow, easy, chulesco pass
 const MAX_BEATS = 4; // only the biggest moves get their own beat
 const TOUR_STEP_MS = 1500;
+const SLOWMO = 3; // «cámara lenta» stretches every tween/beat by this factor
 
 const RIDER_W = 82;
 const LANE_BOTTOM = [40, 68, 96] as const; // px from the scene floor per lane
@@ -86,6 +87,8 @@ export function EtapaPlayer({
   const [instant, setInstant] = React.useState(false);
   const [choreo, setChoreo] = React.useState<Choreo | null>(null);
   const [touring, setTouring] = React.useState(false);
+  const [slowmo, setSlowmo] = React.useState(true);
+  const speed = slowmo ? SLOWMO : 1;
 
   const timers = React.useRef<number[]>([]);
   const scroller = React.useRef<HTMLDivElement | null>(null);
@@ -121,7 +124,7 @@ export function EtapaPlayer({
         });
         setShown(k);
         const totalMs =
-          (BEAT_START + beatList.length * BEAT_LEN + 0.8) * 1000;
+          (BEAT_START + beatList.length * BEAT_LEN + 0.8) * 1000 * speed;
         timers.current.push(
           window.setTimeout(() => setChoreo(null), totalMs),
         );
@@ -162,7 +165,7 @@ export function EtapaPlayer({
           setShown(idx);
         }, t),
       );
-      t += TOUR_STEP_MS;
+      t += TOUR_STEP_MS * speed;
     }
     timers.current.push(window.setTimeout(() => setTouring(false), t));
   };
@@ -222,15 +225,19 @@ export function EtapaPlayer({
       const beat = choreo.beats.get(userId);
       if (beat !== undefined) {
         return {
-          delay: BEAT_START + beat * BEAT_LEN,
-          duration: BEAT_LEN - 0.2,
+          delay: (BEAT_START + beat * BEAT_LEN) * speed,
+          duration: (BEAT_LEN - 0.2) * speed,
           ease: "easeInOut" as const,
         };
       }
-      return { delay: 0.1, duration: 1.0, ease: "easeInOut" as const };
+      return {
+        delay: 0.1 * speed,
+        duration: 1.0 * speed,
+        ease: "easeInOut" as const,
+      };
     }
-    if (touring) return { duration: 1.15, ease: "easeInOut" as const };
-    return { duration: 0.5, ease: "easeInOut" as const };
+    if (touring) return { duration: 1.15 * speed, ease: "easeInOut" as const };
+    return { duration: 0.5 * speed, ease: "easeInOut" as const };
   };
 
   // Group banner anchors: mean x of each group's riders in the shown layout.
@@ -298,6 +305,18 @@ export function EtapaPlayer({
         >
           ↻ Repetir etapa
         </button>
+        <button
+          type="button"
+          className={cn(
+            btn,
+            slowmo && "border-primary bg-primary/10 text-primary",
+          )}
+          onClick={() => setSlowmo((v) => !v)}
+          aria-pressed={slowmo}
+          title="Reproducir las animaciones a cámara lenta"
+        >
+          🐢 Cámara lenta
+        </button>
       </div>
 
       {/* ── the scene ────────────────────────────────────────────────────── */}
@@ -350,7 +369,9 @@ export function EtapaPlayer({
               initial={false}
               animate={{ left: `${Math.max(tailX - 6, 0.5)}%` }}
               transition={
-                instant ? { duration: 0 } : { duration: 0.9, ease: "easeInOut" }
+                instant
+                  ? { duration: 0 }
+                  : { duration: 0.9 * speed, ease: "easeInOut" }
               }
               className={cn("absolute", styles.carBob)}
               style={{ bottom: 24, zIndex: 5 }}
@@ -423,7 +444,9 @@ export function EtapaPlayer({
               initial={false}
               animate={{ left: `${g.cx}%` }}
               transition={
-                instant ? { duration: 0 } : { duration: 0.6, ease: "easeInOut" }
+                instant
+                  ? { duration: 0 }
+                  : { duration: 0.6 * speed, ease: "easeInOut" }
               }
               className="absolute bottom-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-background/70 px-2 py-px text-[10px] text-muted-foreground backdrop-blur"
               style={{ zIndex: 4 }}
