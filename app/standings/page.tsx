@@ -111,7 +111,9 @@ function buildSeries(
   });
 }
 
-// Chronological order of meta-volante rounds (third_place folds into final).
+// Chronological order of meta-volante rounds. Semis and final pay NO meta
+// volante (ADR-0025), so they are excluded — the live board never shows a
+// provisional sprint for a round that awards nothing.
 const ROUND_SEQ = [
   "group-md1",
   "group-md2",
@@ -119,8 +121,6 @@ const ROUND_SEQ = [
   "round_of_32",
   "round_of_16",
   "quarter",
-  "semi",
-  "final",
 ] as const;
 
 /**

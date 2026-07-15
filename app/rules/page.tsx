@@ -134,9 +134,9 @@ export default async function RulesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                En cada ronda (cada jornada de grupos y cada eliminatoria) se
-                reparten puntos extra según tu posición por puntos de
-                pronósticos:{" "}
+                En cada ronda (cada jornada de grupos y cada eliminatoria
+                hasta cuartos — semis y final ya no reparten) se reparten
+                puntos extra según tu posición por puntos de pronósticos:{" "}
                 <b className="text-foreground">
                   {formatDistribution(settings.meta_volante_distribution)}
                 </b>

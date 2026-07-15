@@ -21,10 +21,43 @@ mkdir -p "$dir"
 TABLES="profiles predictions bonus_answers point_adjustments round_awards \
 standings_cache matches teams bonus_questions app_settings tracker_reports"
 
+# --ssl-no-revoke: on corporate networks with TLS inspection, Windows curl
+# (schannel) can't reach the CRL/OCSP endpoints and aborts with exit 35, which
+# under `set -e` killed the whole nightly backup. The corporate CA is still
+# validated against the Windows trust store.
+#
+# Pagination: PostgREST silently caps every response at 1000 rows (rule 8 /
+# ADR-0021) — `predictions` already exceeds it, so a single unpaged GET was
+# truncating the backup with no error. Page via the Range header and merge.
+fetch_table() {
+  local t="$1" from=0 page="$dir/.page.tmp"
+  # stable order for pagination; every table has `id` except standings_cache
+  local ord="id.asc"
+  [ "$t" = "standings_cache" ] && ord="user_id.asc"
+  printf '[' > "$dir/$t.json"
+  local first=1
+  while :; do
+    curl -sf --ssl-no-revoke "$URL/rest/v1/$t?select=*&order=$ord" \
+      -H "apikey: $SRK" -H "Authorization: Bearer $SRK" \
+      -H "Range: $from-$((from + 999))" \
+      -o "$page"
+    local n
+    n=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$page','utf8')).length)")
+    if [ "$n" -gt 0 ]; then
+      [ "$first" -eq 0 ] && printf ',' >> "$dir/$t.json"
+      # strip the page's surrounding brackets and append its elements
+      node -e "const r=JSON.parse(require('fs').readFileSync('$page','utf8'));process.stdout.write(JSON.stringify(r).slice(1,-1))" >> "$dir/$t.json"
+      first=0
+    fi
+    [ "$n" -lt 1000 ] && break
+    from=$((from + 1000))
+  done
+  printf ']' >> "$dir/$t.json"
+  rm -f "$page"
+}
+
 for t in $TABLES; do
-  curl -sf "$URL/rest/v1/$t?select=*" \
-    -H "apikey: $SRK" -H "Authorization: Bearer $SRK" \
-    -o "$dir/$t.json"
+  fetch_table "$t"
 done
 
 # Full pg_dump too, when the connection string is available.

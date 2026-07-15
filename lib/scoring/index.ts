@@ -402,9 +402,12 @@ export function pickRoundWinners(
  *
  * The pool eased into the prize ladder (ADR-0018): the very first sprint
  * (`group-md1`) pays ONLY its winner (`distribution[0]` — the 1º prize), while
- * every later round pays the full ladder. Centralising the rule here keeps the
- * automatic round-close settlement (`recomputeRoundAwards`) and the manual
- * recalc perfectly consistent — both ask this function which ladder to use.
+ * every later round pays the full ladder. The ladder ENDS at the quarters
+ * (ADR-0025): `semi` and `final` pay nothing — an empty distribution, which
+ * also makes `recomputeRoundAwards` remove any previously-granted awards for
+ * those rounds. Centralising the rule here keeps the automatic round-close
+ * settlement (`recomputeRoundAwards`) and the manual recalc perfectly
+ * consistent — both ask this function which ladder to use.
  *
  * Pure: derives the per-round ladder from the base distribution; no point
  * values originate here.
@@ -415,6 +418,8 @@ export function distributionForRound(
 ): readonly number[] {
   // group-md1 = winner-takes-all: just the first (1º) prize.
   if (roundKey === "group-md1") return distribution.slice(0, 1);
+  // semis & final: no meta volante (ADR-0025).
+  if (roundKey === "semi" || roundKey === "final") return [];
   return distribution;
 }
 

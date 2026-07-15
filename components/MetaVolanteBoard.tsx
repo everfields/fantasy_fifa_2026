@@ -291,9 +291,10 @@ export function MetaVolanteBoard({
               <span className="font-semibold text-blue-700 dark:text-blue-400">
                 La meta volante
               </span>{" "}
-              reparte premios por posición en cada ronda según los puntos de
-              pronósticos ({prizeLadder} pts). Empates: más plenos en la ronda;
-              si persiste, los empatados se reparten la suma de sus premios.
+              reparte premios por posición en cada ronda hasta cuartos (semis
+              y final no reparten) según los puntos de pronósticos (
+              {prizeLadder} pts). Empates: más plenos en la ronda; si
+              persiste, los empatados se reparten la suma de sus premios.
             </p>
           </div>
         </div>

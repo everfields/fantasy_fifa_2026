@@ -585,7 +585,8 @@ test("pickRoundAwards: single-prize distribution equals pickRoundWinners", () =>
 });
 
 // ---------------------------------------------------------------------------
-// distributionForRound — group-md1 is winner-takes-all (ADR-0018)
+// distributionForRound — group-md1 is winner-takes-all (ADR-0018); the ladder
+// ends at the quarters: semi/final pay nothing (ADR-0025)
 // ---------------------------------------------------------------------------
 test("distributionForRound: group-md1 pays only the 1º prize", () => {
   assert.deepEqual(
@@ -594,7 +595,7 @@ test("distributionForRound: group-md1 pays only the 1º prize", () => {
   );
 });
 
-test("distributionForRound: every other round keeps the full ladder", () => {
+test("distributionForRound: every intermediate round keeps the full ladder", () => {
   const full = [100, 50, 50, 20, 20, 20, 20];
   for (const k of [
     "group-md2",
@@ -602,11 +603,27 @@ test("distributionForRound: every other round keeps the full ladder", () => {
     "round_of_32",
     "round_of_16",
     "quarter",
-    "semi",
-    "final",
   ]) {
     assert.deepEqual(distributionForRound(k, full), full);
   }
+});
+
+test("distributionForRound: semi and final pay NO meta volante (ADR-0025)", () => {
+  const full = [100, 50, 50, 20, 20, 20, 20];
+  assert.deepEqual(distributionForRound("semi", full), []);
+  assert.deepEqual(distributionForRound("final", full), []);
+});
+
+test("pickRoundAwards: empty distribution (semi/final) yields no awards", () => {
+  const entries = [entry("a", 560, 6), entry("b", 480, 6), entry("c", 430, 3)];
+  assert.deepEqual(
+    pickRoundAwards(entries, distributionForRound("semi", [100, 50, 50, 20])),
+    [],
+  );
+  assert.deepEqual(
+    pickRoundAwards(entries, distributionForRound("final", [100, 50, 50, 20])),
+    [],
+  );
 });
 
 test("distributionForRound: group-md1 winner-takes-all => single award of 1º prize", () => {
