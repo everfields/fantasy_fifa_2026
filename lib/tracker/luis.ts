@@ -18,7 +18,7 @@ import type { TrackerAnalysis, TrackerVerbalization } from "@/lib/types";
 import { LUIS_SYSTEM_PROMPT, buildLuisBriefing } from "@/lib/tracker/persona";
 
 /** Default model — the most capable Claude tier; override with TRACKER_MODEL. */
-const DEFAULT_MODEL = "claude-opus-4-8";
+const DEFAULT_MODEL = "claude-opus-5-5";
 
 /** The model id actually used (exposed so the cron can record it). */
 export function trackerModel(): string {
